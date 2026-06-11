@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Nested Request API", "version": "1.0.0" },
+  "paths": {
+    "/records": {
+      "post": {
+        "operationId": "createRecord",
+        "summary": "Create nested record",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "type": "object",
+                        "properties": {
+                          "city": { "type": "string", "example": "SZ" },
+                          "street": { "type": "string", "example": "Main St" }
+                        }
+                      },
+                      "level1": { "type": "string", "example": "L1" }
+                    }
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": { "type": "string", "example": "alpha" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer", "example": 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

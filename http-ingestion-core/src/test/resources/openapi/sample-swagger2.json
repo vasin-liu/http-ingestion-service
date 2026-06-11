@@ -1,0 +1,67 @@
+{
+  "swagger": "2.0",
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["https"],
+  "paths": {
+    "/items": {
+      "get": {
+        "operationId": "listItems",
+        "summary": "List items",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "type": "integer",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/Item" }
+                },
+                "total": { "type": "integer", "example": 100 }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createItem",
+        "summary": "Create item",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": { "$ref": "#/definitions/ItemCreate" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": { "$ref": "#/definitions/Item" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Item": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "example": 1 },
+        "name": { "type": "string", "example": "foo" }
+      }
+    },
+    "ItemCreate": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "example": "foo" }
+      }
+    }
+  }
+}

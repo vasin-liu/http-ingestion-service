@@ -1,0 +1,14 @@
+target/
+node_modules/
+dist/
+.data/
+data/
+scripts/env
+*.log
+*.pid
+.idea/
+*.iml
+.vscode/
+.DS_Store
+http-ingestion-admin-ui/node_modules/
+http-ingestion-admin-ui/dist/

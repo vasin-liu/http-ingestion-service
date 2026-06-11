@@ -1,0 +1,46 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: http-ingestion-service
+  datasource:
+    url: jdbc:h2:file:${META_DB_PATH:./data}/http-ingestion-meta;MODE=PostgreSQL;AUTO_SERVER=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  quartz:
+    job-store-type: memory
+    auto-startup: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    defaults:
+      enabled: true
+    status:
+      order: DOWN, OUT_OF_SERVICE, UP, UNKNOWN
+
+ingestion:
+  external-pg:
+    url: ${EXTERNAL_PG_URL:}
+    username: ${EXTERNAL_PG_USER:}
+    password: ${EXTERNAL_PG_PASSWORD:}
+  external-kafka:
+    bootstrap-servers: ${EXTERNAL_KAFKA_BOOTSTRAP_SERVERS:}
+
+logging:
+  level:
+    root: INFO
+    com.pcitech.http.ingestion: DEBUG
