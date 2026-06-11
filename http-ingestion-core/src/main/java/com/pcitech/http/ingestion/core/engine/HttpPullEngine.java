@@ -53,6 +53,10 @@ public class HttpPullEngine {
                 ? RuntimeConnectorConfig.PaginationSettings.defaults()
                 : config.pagination();
 
+        if ("cursor".equalsIgnoreCase(pagination.strategy())) {
+            return pullWithCursor(config, watermark, incrementalMode, maxRecords, listener, pagination, http);
+        }
+
         List<Object> allRecords = new ArrayList<>();
         Instant maxTimestamp = watermark;
         int page = pagination.pageStart();
@@ -139,6 +143,112 @@ public class HttpPullEngine {
                 break;
             }
             page++;
+        }
+
+        if (incrementalMode && config.incremental() != null && config.incremental().enabled()
+                && (maxTimestamp == null || watermark == null || !maxTimestamp.isAfter(watermark))) {
+            maxTimestamp = Instant.now();
+        }
+
+        return new PullResult(allRecords, maxTimestamp);
+    }
+
+    private PullResult pullWithCursor(
+            RuntimeConnectorConfig config,
+            Instant watermark,
+            boolean incrementalMode,
+            Integer maxRecords,
+            PullProgressListener listener,
+            RuntimeConnectorConfig.PaginationSettings pagination,
+            RuntimeConnectorConfig.HttpSettings http
+    ) {
+        if (pagination.cursorResponsePath() == null || pagination.cursorResponsePath().isBlank()) {
+            throw new IllegalArgumentException("pagination.cursor_response_path is required for cursor strategy");
+        }
+
+        List<Object> allRecords = new ArrayList<>();
+        Instant maxTimestamp = watermark;
+        String cursor = null;
+        boolean firstPage = true;
+
+        for (int pageIndex = 0; pageIndex < pagination.maxPages(); pageIndex++) {
+            Map<String, String> query = new HashMap<>(http.query());
+            String requestBody = null;
+
+            if ("body".equalsIgnoreCase(pagination.location())) {
+                requestBody = RequestBodyComposer.composeWithCursor(
+                        objectMapper,
+                        http.bodyJson(),
+                        pagination,
+                        config.incremental(),
+                        cursor,
+                        firstPage,
+                        watermark,
+                        incrementalMode
+                );
+            } else {
+                CursorPaginationSupport.applyCursorQuery(query, pagination, cursor, firstPage);
+                applyIncremental(query, config.incremental(), watermark, incrementalMode);
+                if (http.bodyJson() != null && !http.bodyJson().isBlank()) {
+                    requestBody = RequestBodyComposer.composeWithCursor(
+                            objectMapper,
+                            http.bodyJson(),
+                            pagination,
+                            config.incremental(),
+                            cursor,
+                            firstPage,
+                            watermark,
+                            incrementalMode
+                    );
+                }
+            }
+
+            TrialResponseDto response = trialRequestService.execute(
+                    HttpRequestAssembler.fromSettings(http, query, requestBody)
+            );
+            if (response.error() != null) {
+                throw new PullException(pageIndex, "HTTP request failed: " + response.error() + " url=" + http.url());
+            }
+            if (response.statusCode() >= 400) {
+                throw new PullException(pageIndex, "HTTP status " + response.statusCode() + " url=" + http.url());
+            }
+
+            List<Object> pageRecords = jsonPathSupport.readRecords(
+                    response.body(),
+                    config.transform() == null ? "$" : config.transform().inputRoot()
+            );
+            if (listener != null) {
+                listener.onPage(pageIndex, pageRecords.size(), response.durationMs());
+            }
+
+            for (Object record : pageRecords) {
+                allRecords.add(record);
+                if (maxRecords != null && allRecords.size() >= maxRecords) {
+                    break;
+                }
+            }
+
+            if (config.incremental() != null && config.incremental().enabled()) {
+                for (Object record : pageRecords) {
+                    Instant ts = jsonPathSupport.readInstant(record, config.incremental().responsePath());
+                    if (ts != null && (maxTimestamp == null || ts.isAfter(maxTimestamp))) {
+                        maxTimestamp = ts;
+                    }
+                }
+            }
+
+            if (maxRecords != null && allRecords.size() >= maxRecords) {
+                break;
+            }
+
+            String nextCursor = jsonPathSupport.readString(response.body(), pagination.cursorResponsePath());
+            Boolean hasMore = jsonPathSupport.readBoolean(response.body(), pagination.hasMorePath());
+            if (CursorPaginationSupport.shouldStop(pagination, pageRecords, nextCursor, hasMore)) {
+                break;
+            }
+
+            cursor = nextCursor;
+            firstPage = false;
         }
 
         if (incrementalMode && config.incremental() != null && config.incremental().enabled()

@@ -4,6 +4,7 @@ const EXAMPLE_TEMPLATE_IDS = [
   'rest-pagination',
   'rest-offset-limit',
   'rest-kafka',
+  'rest-cursor',
   'webhook-json-array',
 ] as const;
 

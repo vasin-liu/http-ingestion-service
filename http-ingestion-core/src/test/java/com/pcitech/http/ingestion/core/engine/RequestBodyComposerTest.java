@@ -5,6 +5,7 @@ import com.pcitech.http.ingestion.core.config.runtime.RuntimeConnectorConfig;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,7 +17,8 @@ class RequestBodyComposerTest {
     void compose_dahuaBodyPaginationAndIncremental() throws Exception {
         RuntimeConnectorConfig.PaginationSettings pagination = new RuntimeConnectorConfig.PaginationSettings(
                 "page_page_size", "body", "page_number", "page", "pageSize", 1, 2, "$.totalCount", 10,
-                "json_path", null, null, true
+                "json_path", null, null, true,
+                null, null, null, true, List.of("empty_cursor", "empty_page")
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
                 true, "$.capTime", null, "body", "condition.startTime", "condition.endTime", "dahua_utc", "5m"
@@ -41,7 +43,8 @@ class RequestBodyComposerTest {
     void compose_offsetLimitOffsetAndLimitInBody() throws Exception {
         RuntimeConnectorConfig.PaginationSettings pagination = new RuntimeConnectorConfig.PaginationSettings(
                 "offset_limit", "body", "page_number", "offset", "limit", 0, 2, null, 10,
-                "none", null, null, true
+                "none", null, null, true,
+                null, null, null, true, List.of("empty_cursor", "empty_page")
         );
         String template = """
                 {"offset":0,"limit":100}
@@ -66,7 +69,8 @@ class RequestBodyComposerTest {
     void compose_dahuaQueryPaginationAndBodyIncremental() throws Exception {
         RuntimeConnectorConfig.PaginationSettings pagination = new RuntimeConnectorConfig.PaginationSettings(
                 "page_page_size", "query", "page_number", "page", "pageSize", 1, 2, "$.totalCount", 10,
-                "json_path", null, null, true
+                "json_path", null, null, true,
+                null, null, null, true, List.of("empty_cursor", "empty_page")
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
                 true, "$.capTime", null, "body", "startTimeStrUtc", "endTimeStrUtc", "dahua_utc", "5m"
@@ -87,7 +91,8 @@ class RequestBodyComposerTest {
     void compose_meiyaSkipLimitAndEvccRange() throws Exception {
         RuntimeConnectorConfig.PaginationSettings pagination = new RuntimeConnectorConfig.PaginationSettings(
                 "page_page_size", "body", "skip_limit", "page.skip", "page.limit", 1, 50, "$.states.total", 10,
-                "json_path", null, null, true
+                "json_path", null, null, true,
+                null, null, null, true, List.of("empty_cursor", "empty_page")
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
                 true, "$.evcc", null, "body", "params.evcc", null, "meiya_datetime", "5m"
@@ -106,5 +111,31 @@ class RequestBodyComposerTest {
         assertThat(root.path("page").path("limit").asLong()).isEqualTo(50);
         assertThat(root.path("params").path("evcc").isArray()).isTrue();
         assertThat(root.path("params").path("evcc").get(0).asText()).isEqualTo("2025-06-01 08:25:00");
+    }
+
+    @Test
+    void composeWithCursor_omitFirstPage_injectSecond() throws Exception {
+        RuntimeConnectorConfig.PaginationSettings pagination = new RuntimeConnectorConfig.PaginationSettings(
+                "cursor", "body", "page_number", "page", "limit", 0, 10, null, 100,
+                "none", null, null, true,
+                "pageToken", "$.meta.next", null, true, List.of("empty_cursor", "empty_page")
+        );
+        String template = """
+                {"pageToken":"","limit":100}
+                """;
+
+        String first = RequestBodyComposer.composeWithCursor(
+                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(),
+                null, true, null, false
+        );
+        var firstRoot = objectMapper.readTree(first);
+        assertThat(firstRoot.path("pageToken").isMissingNode()
+                || firstRoot.path("pageToken").asText().isEmpty()).isTrue();
+
+        String second = RequestBodyComposer.composeWithCursor(
+                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(),
+                "tok-2", false, null, false
+        );
+        assertThat(objectMapper.readTree(second).path("pageToken").asText()).isEqualTo("tok-2");
     }
 }

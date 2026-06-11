@@ -47,6 +47,31 @@ public final class RequestBodyComposer {
         }
     }
 
+    public static String composeWithCursor(
+            ObjectMapper mapper,
+            String bodyTemplate,
+            RuntimeConnectorConfig.PaginationSettings pagination,
+            RuntimeConnectorConfig.IncrementalSettings incremental,
+            String cursor,
+            boolean firstPage,
+            Instant watermark,
+            boolean incrementalMode
+    ) {
+        try {
+            ObjectNode root = parseBody(mapper, bodyTemplate);
+            if ("body".equalsIgnoreCase(pagination.location())) {
+                applyBodyCursor(root, pagination, cursor, firstPage);
+            }
+            if (incrementalMode && incremental != null && incremental.enabled()
+                    && "body".equalsIgnoreCase(incremental.requestTarget())) {
+                applyBodyIncremental(root, incremental, watermark);
+            }
+            return mapper.writeValueAsString(root);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Failed to compose HTTP request body: " + ex.getMessage(), ex);
+        }
+    }
+
     private static ObjectNode parseBody(ObjectMapper mapper, String bodyTemplate) throws java.io.IOException {
         if (bodyTemplate == null || bodyTemplate.isBlank()) {
             return mapper.createObjectNode();
@@ -73,6 +98,24 @@ public final class RequestBodyComposer {
         }
         setByPath(root, pagination.pageParam(), JsonNodeFactory.instance.numberNode(page));
         setByPath(root, pagination.pageSizeParam(), JsonNodeFactory.instance.numberNode(pageSize));
+    }
+
+    private static void applyBodyCursor(
+            ObjectNode root,
+            RuntimeConnectorConfig.PaginationSettings pagination,
+            String cursor,
+            boolean firstPage
+    ) {
+        if (pagination.pageSizeParam() != null && !pagination.pageSizeParam().isBlank()) {
+            setByPath(root, pagination.pageSizeParam(), JsonNodeFactory.instance.numberNode(pagination.pageSize()));
+        }
+        if (firstPage && pagination.firstPageOmitCursor()) {
+            return;
+        }
+        if (pagination.cursorParam() == null || pagination.cursorParam().isBlank()) {
+            throw new IllegalArgumentException("pagination.cursor_param is required for cursor strategy");
+        }
+        setByPath(root, pagination.cursorParam(), TextNode.valueOf(cursor == null ? "" : cursor));
     }
 
     private static void applyBodyIncremental(

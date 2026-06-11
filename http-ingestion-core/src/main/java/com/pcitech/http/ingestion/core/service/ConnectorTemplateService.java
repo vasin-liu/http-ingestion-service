@@ -18,6 +18,7 @@ public class ConnectorTemplateService {
         this.templates = List.of(
                 restPaginationTemplate(),
                 restOffsetLimitTemplate(),
+                restCursorTemplate(),
                 restKafkaTemplate(),
                 webhookJsonArrayTemplate()
         );
@@ -136,6 +137,61 @@ public class ConnectorTemplateService {
                 "rest-offset-limit",
                 "REST offset/limit 示例",
                 "演示 offset/limit 分页策略与 PostgreSQL upsert 能力",
+                "pull",
+                config
+        );
+    }
+
+    private ConnectorTemplateDto restCursorTemplate() {
+        JsonNode config = objectMapper.valueToTree(java.util.Map.of(
+                "http", java.util.Map.of(
+                        "method", "GET",
+                        "url", "https://api.example.com/items",
+                        "headers", java.util.Map.of(),
+                        "query", java.util.Map.of(),
+                        "timeout_ms", 30000
+                ),
+                "pagination", java.util.Map.of(
+                        "strategy", "cursor",
+                        "location", "query",
+                        "cursor_param", "cursor",
+                        "page_size_param", "limit",
+                        "page_size", 100,
+                        "cursor_response_path", "$.meta.nextCursor",
+                        "has_more_path", "$.meta.hasMore",
+                        "first_page_omit_cursor", true,
+                        "stop_when", List.of("empty_cursor", "has_more_false", "empty_page"),
+                        "max_pages", 1000
+                ),
+                "incremental", java.util.Map.of("enabled", false),
+                "sync", java.util.Map.of("on_first_run", "full"),
+                "transform", java.util.Map.of(
+                        "input_root", "$.data",
+                        "steps", List.of(java.util.Map.of(
+                                "type", "map_fields",
+                                "mappings", List.of(
+                                        mapping("id", "$.id", "long"),
+                                        mapping("name", "$.name", "string")
+                                )
+                        ))
+                ),
+                "sink", java.util.Map.of(
+                        "type", "postgresql",
+                        "target", java.util.Map.of("schema", "public", "table", "items"),
+                        "keys", List.of("id"),
+                        "write_mode", "upsert",
+                        "batch_size", 500
+                ),
+                "schedule", java.util.Map.of(
+                        "enabled", true,
+                        "type", "cron",
+                        "expression", "0 0/5 * * * ?"
+                )
+        ));
+        return example(
+                "rest-cursor",
+                "REST Cursor 分页示例",
+                "演示 cursor/token 翻页与 hasMore 终止",
                 "pull",
                 config
         );

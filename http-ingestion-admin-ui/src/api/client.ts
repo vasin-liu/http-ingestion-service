@@ -269,11 +269,17 @@ export const defaultConfig = {
   },
   pagination: {
     strategy: 'page_page_size',
+    location: 'query',
     page_param: 'page',
     page_size_param: 'page_size',
     page_start: 1,
     page_size: 100,
     max_pages: 1000,
+    cursor_param: 'cursor',
+    cursor_response_path: '$.meta.nextCursor',
+    has_more_path: '$.meta.hasMore',
+    first_page_omit_cursor: true,
+    stop_when: ['empty_cursor', 'empty_page'],
     total_count: { source: 'none', json_path: '', http: { method: 'POST', url: '', reuse_body: true } },
   },
   incremental: {

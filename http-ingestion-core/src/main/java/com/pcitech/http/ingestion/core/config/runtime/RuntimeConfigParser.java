@@ -90,6 +90,18 @@ public final class RuntimeConfigParser {
         }
         String countMethod = text(countHttp, "method", "POST");
         boolean reuseBody = !countHttp.has("reuse_body") || countHttp.path("reuse_body").asBoolean(true);
+        List<String> stopWhen = new ArrayList<>();
+        JsonNode stopNode = node.path("stop_when");
+        if (stopNode.isArray()) {
+            for (JsonNode item : stopNode) {
+                if (item.isTextual() && !item.asText().isBlank()) {
+                    stopWhen.add(item.asText().trim());
+                }
+            }
+        }
+        if (stopWhen.isEmpty()) {
+            stopWhen = new ArrayList<>(RuntimeConnectorConfig.PaginationSettings.defaultStopWhen());
+        }
         return new RuntimeConnectorConfig.PaginationSettings(
                 text(node, "strategy", "page_page_size"),
                 text(node, "location", "query"),
@@ -103,7 +115,12 @@ public final class RuntimeConfigParser {
                 totalSource,
                 countUrl,
                 countMethod,
-                reuseBody
+                reuseBody,
+                text(node, "cursor_param", null),
+                text(node, "cursor_response_path", null),
+                text(node, "has_more_path", null),
+                !node.has("first_page_omit_cursor") || node.path("first_page_omit_cursor").asBoolean(true),
+                stopWhen
         );
     }
 

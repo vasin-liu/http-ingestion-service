@@ -326,6 +326,41 @@ public final class ConnectorConfigFactory {
         return config;
     }
 
+    public static JsonNode cursorItemsConfig(ObjectMapper objectMapper, String baseUrl) {
+        ObjectNode config = objectMapper.createObjectNode();
+        ObjectNode http = config.putObject("http");
+        http.put("method", "GET");
+        http.put("url", baseUrl + "/items");
+        http.put("timeout_ms", 30000);
+        http.putObject("headers");
+        http.putObject("query");
+
+        ObjectNode pagination = config.putObject("pagination");
+        pagination.put("strategy", "cursor");
+        pagination.put("location", "query");
+        pagination.put("cursor_param", "cursor");
+        pagination.put("page_size_param", "limit");
+        pagination.put("page_size", 2);
+        pagination.put("cursor_response_path", "$.meta.next");
+        pagination.put("has_more_path", "$.meta.hasMore");
+        pagination.put("first_page_omit_cursor", true);
+        pagination.putArray("stop_when").add("empty_cursor").add("has_more_false").add("empty_page");
+        pagination.put("max_pages", 10);
+
+        ObjectNode transform = config.putObject("transform");
+        transform.put("input_root", "$.data");
+        ArrayNode steps = transform.putArray("steps");
+        ObjectNode step = steps.addObject();
+        step.put("type", "map_fields");
+        ArrayNode mappings = step.putArray("mappings");
+        mappings.addObject().put("target", "id").put("source", "$.id").put("type", "long");
+        mappings.addObject().put("target", "name").put("source", "$.name").put("type", "string");
+
+        appendSink(config, "users", "id");
+        config.putObject("incremental").put("enabled", false);
+        return config;
+    }
+
     public static JsonNode kafkaWireMockUsersConfig(ObjectMapper objectMapper, String wireMockBaseUrl, String topic) {
         ObjectNode config = objectMapper.createObjectNode();
 

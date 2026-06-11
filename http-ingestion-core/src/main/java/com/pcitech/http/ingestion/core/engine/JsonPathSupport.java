@@ -69,6 +69,33 @@ public class JsonPathSupport {
         }
     }
 
+    public String readString(String body, String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        DocumentContext context = JsonPath.using(JSON_PATH_CONFIG).parse(body);
+        Object value = context.read(path);
+        if (value == null) {
+            return null;
+        }
+        return String.valueOf(value);
+    }
+
+    public Boolean readBoolean(String body, String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        DocumentContext context = JsonPath.using(JSON_PATH_CONFIG).parse(body);
+        Object value = context.read(path);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        return Boolean.parseBoolean(String.valueOf(value));
+    }
+
     public Object readValue(Object record, String path) {
         if (path == null || path.isBlank()) {
             return null;

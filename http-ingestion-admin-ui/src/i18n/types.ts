@@ -151,6 +151,13 @@ export type LocaleMessages = {
     sendTrial: string;
     jsonPathPick: string;
     inputRoot: string;
+    paginationStrategy: string;
+    paginationLocation: string;
+    cursorParam: string;
+    cursorResponsePath: string;
+    hasMorePath: string;
+    firstPageOmitCursor: string;
+    stopWhen: string;
     pageParam: string;
     pageSizeParam: string;
     pageSize: string;

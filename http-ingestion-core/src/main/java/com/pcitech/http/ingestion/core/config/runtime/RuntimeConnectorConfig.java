@@ -39,13 +39,23 @@ public record RuntimeConnectorConfig(
             String totalCountSource,
             String totalCountUrl,
             String totalCountMethod,
-            boolean totalCountReuseBody
+            boolean totalCountReuseBody,
+            String cursorParam,
+            String cursorResponsePath,
+            String hasMorePath,
+            boolean firstPageOmitCursor,
+            List<String> stopWhen
     ) {
         public static PaginationSettings defaults() {
             return new PaginationSettings(
                     "page_page_size", "query", "page_number", "page", "page_size", 1, 100, null, 1000,
-                    "none", null, null, true
+                    "none", null, null, true,
+                    null, null, null, true, defaultStopWhen()
             );
+        }
+
+        public static List<String> defaultStopWhen() {
+            return List.of("empty_cursor", "empty_page");
         }
     }
 

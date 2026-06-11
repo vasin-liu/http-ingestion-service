@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import {
   Alert,
   Button,
+  Checkbox,
   Form,
   Input,
   InputNumber,
@@ -77,6 +78,8 @@ export default function ConnectorWizardPage() {
   const [dryRunning, setDryRunning] = useState(false);
   const urlValidator = useMemo(() => createHttpUrlValidator(t('connectorWizard.urlInvalid')), [t]);
   const sinkSettings = Form.useWatch('sink', form) as { type?: string } | undefined;
+  const paginationStrategy = Form.useWatch(['pagination', 'strategy'], form) ?? 'page_page_size';
+  const isCursorPagination = paginationStrategy === 'cursor';
   const isKafkaSink = sinkSettings?.type === 'kafka';
   const openapiMetaFromForm = Form.useWatch('openapi_meta', form) as OpenApiMeta | undefined;
   const requestSchemaFromForm = parseRequestSchema(openapiMetaFromForm?.request_schema);
@@ -646,30 +649,93 @@ export default function ConnectorWizardPage() {
 
           <div style={{ display: step === 3 ? 'block' : 'none' }}>
             <Alert type="info" showIcon message={t('connectorWizard.sprintHint')} style={{ marginBottom: 16 }} />
-            <Form.Item name={['pagination', 'page_param']} label={t('connectorWizard.pageParam')}>
-              <Input />
-            </Form.Item>
-            <Form.Item name={['pagination', 'page_size_param']} label={t('connectorWizard.pageSizeParam')}>
-              <Input />
-            </Form.Item>
-            <Form.Item name={['pagination', 'page_size']} label={t('connectorWizard.pageSize')}>
-              <InputNumber min={1} max={1000} style={{ width: 200 }} />
-            </Form.Item>
-            <Form.Item name={['pagination', 'total_count', 'json_path']} label={t('connectorWizard.totalJsonPath')}>
-              <Input placeholder="$.meta.total" />
-            </Form.Item>
-            <Form.Item name={['pagination', 'total_count', 'source']} label={t('connectorWizard.totalCountSource')}>
+            <Form.Item name={['pagination', 'strategy']} label={t('connectorWizard.paginationStrategy')}>
               <Select
                 options={[
-                  { value: 'none', label: 'none' },
-                  { value: 'json_path', label: 'json_path' },
-                  { value: 'separate_request', label: 'separate_request' },
+                  { value: 'page_page_size', label: 'page / page_size' },
+                  { value: 'offset_limit', label: 'offset / limit' },
+                  { value: 'cursor', label: 'cursor' },
                 ]}
               />
             </Form.Item>
-            <Form.Item name={['pagination', 'total_count', 'http', 'url']} label={t('connectorWizard.totalCountUrl')}>
-              <Input placeholder="https://example/api/count" data-testid="total-count-url" />
-            </Form.Item>
+            {isCursorPagination ? (
+              <>
+                <Form.Item name={['pagination', 'location']} label={t('connectorWizard.paginationLocation')}>
+                  <Select
+                    options={[
+                      { value: 'query', label: 'query' },
+                      { value: 'body', label: 'body' },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name={['pagination', 'cursor_param']}
+                  label={t('connectorWizard.cursorParam')}
+                  rules={[{ required: true }]}
+                >
+                  <Input data-testid="cursor-param" />
+                </Form.Item>
+                <Form.Item
+                  name={['pagination', 'cursor_response_path']}
+                  label={t('connectorWizard.cursorResponsePath')}
+                  rules={[{ required: true }]}
+                >
+                  <Input placeholder="$.meta.nextCursor" data-testid="cursor-response-path" />
+                </Form.Item>
+                <Form.Item name={['pagination', 'has_more_path']} label={t('connectorWizard.hasMorePath')}>
+                  <Input placeholder="$.meta.hasMore" />
+                </Form.Item>
+                <Form.Item
+                  name={['pagination', 'first_page_omit_cursor']}
+                  label={t('connectorWizard.firstPageOmitCursor')}
+                  valuePropName="checked"
+                >
+                  <Switch />
+                </Form.Item>
+                <Form.Item name={['pagination', 'stop_when']} label={t('connectorWizard.stopWhen')}>
+                  <Checkbox.Group
+                    options={[
+                      { label: 'empty_cursor', value: 'empty_cursor' },
+                      { label: 'has_more_false', value: 'has_more_false' },
+                      { label: 'empty_page', value: 'empty_page' },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name={['pagination', 'page_size_param']} label={t('connectorWizard.pageSizeParam')}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name={['pagination', 'page_size']} label={t('connectorWizard.pageSize')}>
+                  <InputNumber min={1} max={1000} style={{ width: 200 }} />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item name={['pagination', 'page_param']} label={t('connectorWizard.pageParam')}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name={['pagination', 'page_size_param']} label={t('connectorWizard.pageSizeParam')}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name={['pagination', 'page_size']} label={t('connectorWizard.pageSize')}>
+                  <InputNumber min={1} max={1000} style={{ width: 200 }} />
+                </Form.Item>
+                <Form.Item name={['pagination', 'total_count', 'json_path']} label={t('connectorWizard.totalJsonPath')}>
+                  <Input placeholder="$.meta.total" />
+                </Form.Item>
+                <Form.Item name={['pagination', 'total_count', 'source']} label={t('connectorWizard.totalCountSource')}>
+                  <Select
+                    options={[
+                      { value: 'none', label: 'none' },
+                      { value: 'json_path', label: 'json_path' },
+                      { value: 'separate_request', label: 'separate_request' },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name={['pagination', 'total_count', 'http', 'url']} label={t('connectorWizard.totalCountUrl')}>
+                  <Input placeholder="https://example/api/count" data-testid="total-count-url" />
+                </Form.Item>
+              </>
+            )}
             <Form.Item
               name={['incremental', 'enabled']}
               label={t('connectorWizard.incrementalEnabled')}

@@ -37,8 +37,10 @@ import java.util.List;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -87,7 +89,7 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
 
             var templates = restTemplate.getForEntity("/api/templates", List.class);
             assertThat(templates.getBody()).isNotNull();
-            assertThat(templates.getBody().size()).isEqualTo(4);
+            assertThat(templates.getBody().size()).isEqualTo(5);
 
             JobRun fullJob = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
@@ -975,6 +977,50 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
 
             try (var connection = pgConnection()) {
                 assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(6);
+            }
+        }
+    }
+
+    @Nested
+    class CursorPull {
+
+        @BeforeEach
+        void stubCursorItems() {
+            WIREMOCK.resetAll();
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .withQueryParam("cursor", equalTo("c2"))
+                    .atPriority(1)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":3,"name":"C"}],"meta":{"next":"","hasMore":false}}
+                                    """)));
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .atPriority(2)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":1,"name":"A"},{"id":2,"name":"B"}],"meta":{"next":"c2","hasMore":true}}
+                                    """)));
+        }
+
+        @Test
+        void wireMockCursor_twoPagesThreeRows() throws Exception {
+            JsonNode config = ConnectorConfigFactory.cursorItemsConfig(
+                    objectMapper,
+                    "http://localhost:" + WIREMOCK.getPort()
+            );
+            connectorService.create(new ConnectorRequestDto("e2e-cursor", "Cursor Items", "pull", config));
+            connectorService.publish("e2e-cursor");
+
+            JobRun job = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-cursor", SyncService.SyncOptions.full()));
+            assertThat(job.status()).as("job error: %s", job.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(job.recordsOk()).isEqualTo(3);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(3);
             }
         }
     }
