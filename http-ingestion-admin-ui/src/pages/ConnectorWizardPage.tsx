@@ -80,6 +80,7 @@ export default function ConnectorWizardPage() {
   const sinkSettings = Form.useWatch('sink', form) as { type?: string } | undefined;
   const paginationStrategy = Form.useWatch(['pagination', 'strategy'], form) ?? 'page_page_size';
   const isCursorPagination = paginationStrategy === 'cursor';
+  const isLinkHeaderPagination = paginationStrategy === 'link_header';
   const isKafkaSink = sinkSettings?.type === 'kafka';
   const openapiMetaFromForm = Form.useWatch('openapi_meta', form) as OpenApiMeta | undefined;
   const requestSchemaFromForm = parseRequestSchema(openapiMetaFromForm?.request_schema);
@@ -655,10 +656,28 @@ export default function ConnectorWizardPage() {
                   { value: 'page_page_size', label: 'page / page_size' },
                   { value: 'offset_limit', label: 'offset / limit' },
                   { value: 'cursor', label: 'cursor' },
+                  { value: 'link_header', label: 'link_header' },
                 ]}
               />
             </Form.Item>
-            {isCursorPagination ? (
+            {isLinkHeaderPagination ? (
+              <>
+                <Form.Item name={['pagination', 'link_header_name']} label={t('connectorWizard.linkHeaderName')}>
+                  <Input placeholder="Link" data-testid="link-header-name" />
+                </Form.Item>
+                <Form.Item name={['pagination', 'link_rel']} label={t('connectorWizard.linkRel')}>
+                  <Input placeholder="next" data-testid="link-rel" />
+                </Form.Item>
+                <Form.Item name={['pagination', 'stop_when']} label={t('connectorWizard.stopWhen')}>
+                  <Checkbox.Group
+                    options={[
+                      { label: 'no_next_link', value: 'no_next_link' },
+                      { label: 'empty_page', value: 'empty_page' },
+                    ]}
+                  />
+                </Form.Item>
+              </>
+            ) : isCursorPagination ? (
               <>
                 <Form.Item name={['pagination', 'location']} label={t('connectorWizard.paginationLocation')}>
                   <Select

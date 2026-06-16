@@ -5,6 +5,7 @@ const EXAMPLE_TEMPLATE_IDS = [
   'rest-offset-limit',
   'rest-kafka',
   'rest-cursor',
+  'rest-link-header',
   'webhook-json-array',
 ] as const;
 

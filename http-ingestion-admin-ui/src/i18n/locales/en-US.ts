@@ -177,6 +177,8 @@ const enUS: LocaleMessages = {
     paginationStrategy: 'Pagination strategy',
     paginationLocation: 'Cursor location',
     cursorParam: 'Cursor param name',
+    linkHeaderName: 'Link header name',
+    linkRel: 'rel value',
     cursorResponsePath: 'Next cursor JsonPath',
     hasMorePath: 'hasMore JsonPath (optional)',
     firstPageOmitCursor: 'Omit cursor on first page',

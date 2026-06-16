@@ -177,6 +177,8 @@ const zhCN: LocaleMessages = {
     paginationStrategy: '分页策略',
     paginationLocation: 'cursor 位置',
     cursorParam: 'cursor 参数名',
+    linkHeaderName: 'Link 头名称',
+    linkRel: 'rel 值',
     cursorResponsePath: '下一页 cursor JsonPath',
     hasMorePath: 'hasMore JsonPath（可选）',
     firstPageOmitCursor: '首页省略 cursor',

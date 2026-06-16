@@ -19,6 +19,7 @@ public class ConnectorTemplateService {
                 restPaginationTemplate(),
                 restOffsetLimitTemplate(),
                 restCursorTemplate(),
+                restLinkHeaderTemplate(),
                 restKafkaTemplate(),
                 webhookJsonArrayTemplate()
         );
@@ -192,6 +193,56 @@ public class ConnectorTemplateService {
                 "rest-cursor",
                 "REST Cursor 分页示例",
                 "演示 cursor/token 翻页与 hasMore 终止",
+                "pull",
+                config
+        );
+    }
+
+    private ConnectorTemplateDto restLinkHeaderTemplate() {
+        JsonNode config = objectMapper.valueToTree(java.util.Map.of(
+                "http", java.util.Map.of(
+                        "method", "GET",
+                        "url", "https://api.example.com/items",
+                        "headers", java.util.Map.of(),
+                        "query", java.util.Map.of(),
+                        "timeout_ms", 30000
+                ),
+                "pagination", java.util.Map.of(
+                        "strategy", "link_header",
+                        "link_header_name", "Link",
+                        "link_rel", "next",
+                        "stop_when", List.of("no_next_link", "empty_page"),
+                        "max_pages", 1000
+                ),
+                "incremental", java.util.Map.of("enabled", false),
+                "sync", java.util.Map.of("on_first_run", "full"),
+                "transform", java.util.Map.of(
+                        "input_root", "$.data",
+                        "steps", List.of(java.util.Map.of(
+                                "type", "map_fields",
+                                "mappings", List.of(
+                                        mapping("id", "$.id", "long"),
+                                        mapping("name", "$.name", "string")
+                                )
+                        ))
+                ),
+                "sink", java.util.Map.of(
+                        "type", "postgresql",
+                        "target", java.util.Map.of("schema", "public", "table", "items"),
+                        "keys", List.of("id"),
+                        "write_mode", "upsert",
+                        "batch_size", 500
+                ),
+                "schedule", java.util.Map.of(
+                        "enabled", true,
+                        "type", "cron",
+                        "expression", "0 0/5 * * * ?"
+                )
+        ));
+        return example(
+                "rest-link-header",
+                "REST Link 分页示例",
+                "演示 Link rel=next 响应头翻页",
                 "pull",
                 config
         );

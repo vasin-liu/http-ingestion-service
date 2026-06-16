@@ -42,7 +42,7 @@ class CursorPaginationSupportTest {
         return new RuntimeConnectorConfig.PaginationSettings(
                 "cursor", "query", "page_number", "page", "limit", 0, 10, null, 100,
                 "none", null, null, true,
-                "cursor", "$.meta.next", "$.meta.hasMore", true, stopWhen
+                "cursor", "$.meta.next", "$.meta.hasMore", true, stopWhen, "Link", "next"
         );
     }
 }

@@ -17,6 +17,7 @@
 |----|------|
 | `RequestBodyComposerTest` | HTTP body 占位符、增量时间注入、**offset_limit**、**cursor body** |
 | `CursorPaginationSupportTest` | cursor `stop_when` OR 语义 |
+| `LinkHeaderSupportTest` | Link `rel=next` 解析与 `stop_when` |
 | `JsonPathSupportCursorTest` | cursor/hasMore JsonPath 读取 |
 | `JiaduSignVerifierTest` | 佳都 sign MD5 |
 | `KafkaRecordSinkTestcontainersTest` | Kafka JSON publish + message key |
@@ -40,6 +41,7 @@
 | `HttpIngestionE2ETest.JiaduPushIngress` | 佳都 Push P1–P4 + Mock simulator |
 | `HttpIngestionE2ETest.OffsetLimitPull` | WireMock offset/limit 3 页 6 行 |
 | `HttpIngestionE2ETest.CursorPull` | WireMock query cursor 2 页 3 行 |
+| `HttpIngestionE2ETest.LinkHeaderPull` | WireMock Link header 2 页 3 行 |
 | `KafkaSinkE2ETest` | WireMock Pull → Kafka topic（**CI 门禁**） |
 | `OpenApiImportE2ETest` | `POST /api/openapi/parse`（OAS3 内联、Swagger2 URL）、批量创建 + `openapi_meta` |
 
@@ -66,6 +68,7 @@
 | `openapi-import.spec.ts` | OpenAPI 导入全链路（粘贴解析、搜索、GET Params、POST Body 树、编辑页 schema 刷新、响应 Schema、批量创建） |
 | `json-tree.spec.ts` | JSON 树形 Body 编辑器（嵌套 object/array、展开/收起行数稳定、object 内添加字段） |
 | `cursor-pagination.spec.ts` | **rest-cursor** 模板 → Mock 全量 sync |
+| `link-header-pagination.spec.ts` | **rest-link-header** 模板 → Mock 全量 sync |
 
 Playwright `global-setup.ts` 启动 **PostgreSQL + Kafka**（Podman/Docker），并注入 `EXTERNAL_KAFKA_BOOTSTRAP_SERVERS`。
 

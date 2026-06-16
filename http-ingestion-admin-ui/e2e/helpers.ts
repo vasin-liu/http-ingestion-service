@@ -60,7 +60,7 @@ export async function createConnectorFromTemplate(
   await page.getByTestId('create-from-template-btn').click();
   await page.getByTestId(`template-${templateId}`).click();
   await page.getByLabel('连接器 ID').fill(connectorId);
-  await page.getByLabel('名称').fill(connectorName);
+  await page.getByRole('textbox', { name: '* 名称' }).fill(connectorName);
   await page.getByTestId('wizard-next').click();
   await expect(page.getByTestId('http-url')).toBeVisible();
   await page.getByTestId('http-url').fill(mockUrl);

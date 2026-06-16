@@ -154,6 +154,8 @@ export type LocaleMessages = {
     paginationStrategy: string;
     paginationLocation: string;
     cursorParam: string;
+    linkHeaderName: string;
+    linkRel: string;
     cursorResponsePath: string;
     hasMorePath: string;
     firstPageOmitCursor: string;

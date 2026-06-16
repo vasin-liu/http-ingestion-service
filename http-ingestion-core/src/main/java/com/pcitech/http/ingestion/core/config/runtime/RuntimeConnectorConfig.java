@@ -44,18 +44,25 @@ public record RuntimeConnectorConfig(
             String cursorResponsePath,
             String hasMorePath,
             boolean firstPageOmitCursor,
-            List<String> stopWhen
+            List<String> stopWhen,
+            String linkHeaderName,
+            String linkRel
     ) {
         public static PaginationSettings defaults() {
             return new PaginationSettings(
                     "page_page_size", "query", "page_number", "page", "page_size", 1, 100, null, 1000,
                     "none", null, null, true,
-                    null, null, null, true, defaultStopWhen()
+                    null, null, null, true, defaultStopWhen(),
+                    "Link", "next"
             );
         }
 
         public static List<String> defaultStopWhen() {
             return List.of("empty_cursor", "empty_page");
+        }
+
+        public static List<String> defaultLinkHeaderStopWhen() {
+            return List.of("no_next_link", "empty_page");
         }
     }
 

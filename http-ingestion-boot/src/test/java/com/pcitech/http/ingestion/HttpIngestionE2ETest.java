@@ -89,7 +89,7 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
 
             var templates = restTemplate.getForEntity("/api/templates", List.class);
             assertThat(templates.getBody()).isNotNull();
-            assertThat(templates.getBody().size()).isEqualTo(5);
+            assertThat(templates.getBody().size()).isEqualTo(6);
 
             JobRun fullJob = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
@@ -1016,6 +1016,53 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
             JobRun job = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
                     syncService.triggerAsync("e2e-cursor", SyncService.SyncOptions.full()));
+            assertThat(job.status()).as("job error: %s", job.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(job.recordsOk()).isEqualTo(3);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(3);
+            }
+        }
+    }
+
+    @Nested
+    class LinkHeaderPull {
+
+        @BeforeEach
+        void stubLinkItems() {
+            WIREMOCK.resetAll();
+            int port = WIREMOCK.getPort();
+            String page2Url = "http://localhost:" + port + "/items?page=2";
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .withQueryParam("page", equalTo("2"))
+                    .atPriority(1)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":3,"name":"C"}]}
+                                    """)));
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .atPriority(2)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withHeader("Link", "<" + page2Url + ">; rel=\"next\"")
+                            .withBody("""
+                                    {"data":[{"id":1,"name":"A"},{"id":2,"name":"B"}]}
+                                    """)));
+        }
+
+        @Test
+        void wireMockLinkHeader_twoPagesThreeRows() throws Exception {
+            JsonNode config = ConnectorConfigFactory.linkHeaderItemsConfig(
+                    objectMapper,
+                    "http://localhost:" + WIREMOCK.getPort()
+            );
+            connectorService.create(new ConnectorRequestDto("e2e-link-header", "Link Header Items", "pull", config));
+            connectorService.publish("e2e-link-header");
+
+            JobRun job = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-link-header", SyncService.SyncOptions.full()));
             assertThat(job.status()).as("job error: %s", job.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
             assertThat(job.recordsOk()).isEqualTo(3);
 

@@ -100,7 +100,12 @@ public final class RuntimeConfigParser {
             }
         }
         if (stopWhen.isEmpty()) {
-            stopWhen = new ArrayList<>(RuntimeConnectorConfig.PaginationSettings.defaultStopWhen());
+            String strategy = text(node, "strategy", "page_page_size");
+            if ("link_header".equalsIgnoreCase(strategy)) {
+                stopWhen = new ArrayList<>(RuntimeConnectorConfig.PaginationSettings.defaultLinkHeaderStopWhen());
+            } else {
+                stopWhen = new ArrayList<>(RuntimeConnectorConfig.PaginationSettings.defaultStopWhen());
+            }
         }
         return new RuntimeConnectorConfig.PaginationSettings(
                 text(node, "strategy", "page_page_size"),
@@ -120,7 +125,9 @@ public final class RuntimeConfigParser {
                 text(node, "cursor_response_path", null),
                 text(node, "has_more_path", null),
                 !node.has("first_page_omit_cursor") || node.path("first_page_omit_cursor").asBoolean(true),
-                stopWhen
+                stopWhen,
+                text(node, "link_header_name", "Link"),
+                text(node, "link_rel", "next")
         );
     }
 

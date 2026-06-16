@@ -15,6 +15,13 @@
 - Mock：`GET /mock/e2e/cursor-items`
 - 测试：`CursorPaginationSupportTest`、`HttpIngestionE2ETest.CursorPull`、`cursor-pagination.spec.ts`
 
+### Link/Header 分页
+
+- Core：`pagination.strategy: link_header`（`Link` 头 `rel=next` 翻页）
+- 模板：`rest-link-header`（第 6 个 example 模板）
+- Mock：`GET /mock/e2e/link-items`
+- 测试：`LinkHeaderSupportTest`、`HttpIngestionE2ETest.LinkHeaderPull`、`link-header-pagination.spec.ts`
+
 ### OpenAPI 导入（通用化）
 
 - API：`POST /api/openapi/parse`（OAS3 + Swagger 2.0，URL 拉取最大 16MB）

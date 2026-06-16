@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class HttpPullEngine {
@@ -55,6 +56,9 @@ public class HttpPullEngine {
 
         if ("cursor".equalsIgnoreCase(pagination.strategy())) {
             return pullWithCursor(config, watermark, incrementalMode, maxRecords, listener, pagination, http);
+        }
+        if ("link_header".equalsIgnoreCase(pagination.strategy())) {
+            return pullWithLinkHeader(config, watermark, incrementalMode, maxRecords, listener, pagination, http);
         }
 
         List<Object> allRecords = new ArrayList<>();
@@ -248,6 +252,98 @@ public class HttpPullEngine {
             }
 
             cursor = nextCursor;
+            firstPage = false;
+        }
+
+        if (incrementalMode && config.incremental() != null && config.incremental().enabled()
+                && (maxTimestamp == null || watermark == null || !maxTimestamp.isAfter(watermark))) {
+            maxTimestamp = Instant.now();
+        }
+
+        return new PullResult(allRecords, maxTimestamp);
+    }
+
+    private PullResult pullWithLinkHeader(
+            RuntimeConnectorConfig config,
+            Instant watermark,
+            boolean incrementalMode,
+            Integer maxRecords,
+            PullProgressListener listener,
+            RuntimeConnectorConfig.PaginationSettings pagination,
+            RuntimeConnectorConfig.HttpSettings http
+    ) {
+        List<Object> allRecords = new ArrayList<>();
+        Instant maxTimestamp = watermark;
+        String currentUrl = http.url();
+        boolean firstPage = true;
+
+        for (int pageIndex = 0; pageIndex < pagination.maxPages(); pageIndex++) {
+            Map<String, String> query = firstPage ? new HashMap<>(http.query()) : Map.of();
+            if (firstPage) {
+                applyIncremental(query, config.incremental(), watermark, incrementalMode);
+            }
+            String requestBody = null;
+            if (firstPage && http.bodyJson() != null && !http.bodyJson().isBlank()) {
+                requestBody = RequestBodyComposer.compose(
+                        objectMapper,
+                        http.bodyJson(),
+                        pagination,
+                        config.incremental(),
+                        pagination.pageStart(),
+                        watermark,
+                        incrementalMode
+                );
+            }
+
+            TrialResponseDto response = trialRequestService.execute(
+                    HttpRequestAssembler.fromSettings(http, currentUrl, query, requestBody)
+            );
+            if (response.error() != null) {
+                throw new PullException(pageIndex, "HTTP request failed: " + response.error() + " url=" + currentUrl);
+            }
+            if (response.statusCode() >= 400) {
+                throw new PullException(pageIndex, "HTTP status " + response.statusCode() + " url=" + currentUrl);
+            }
+
+            List<Object> pageRecords = jsonPathSupport.readRecords(
+                    response.body(),
+                    config.transform() == null ? "$" : config.transform().inputRoot()
+            );
+            if (listener != null) {
+                listener.onPage(pageIndex, pageRecords.size(), response.durationMs());
+            }
+
+            for (Object record : pageRecords) {
+                allRecords.add(record);
+                if (maxRecords != null && allRecords.size() >= maxRecords) {
+                    break;
+                }
+            }
+
+            if (config.incremental() != null && config.incremental().enabled()) {
+                for (Object record : pageRecords) {
+                    Instant ts = jsonPathSupport.readInstant(record, config.incremental().responsePath());
+                    if (ts != null && (maxTimestamp == null || ts.isAfter(maxTimestamp))) {
+                        maxTimestamp = ts;
+                    }
+                }
+            }
+
+            if (maxRecords != null && allRecords.size() >= maxRecords) {
+                break;
+            }
+
+            String linkHeader = LinkHeaderSupport.readHeader(
+                    response.responseHeaders(),
+                    pagination.linkHeaderName() == null ? "Link" : pagination.linkHeaderName()
+            );
+            String rel = pagination.linkRel() == null || pagination.linkRel().isBlank() ? "next" : pagination.linkRel();
+            Optional<String> nextLink = LinkHeaderSupport.parseRelLink(linkHeader, rel);
+            if (LinkHeaderSupport.shouldStop(pagination, pageRecords, nextLink)) {
+                break;
+            }
+
+            currentUrl = nextLink.orElseThrow();
             firstPage = false;
         }
 

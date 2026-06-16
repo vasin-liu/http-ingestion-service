@@ -15,11 +15,20 @@ public final class HttpRequestAssembler {
             Map<String, String> query,
             String composedJsonBody
     ) {
+        return fromSettings(http, http.url(), query, composedJsonBody);
+    }
+
+    public static TrialRequestDto fromSettings(
+            RuntimeConnectorConfig.HttpSettings http,
+            String requestUrl,
+            Map<String, String> query,
+            String composedJsonBody
+    ) {
         String bodyType = resolveBodyType(http);
         if ("json".equals(bodyType)) {
             return new TrialRequestDto(
                     http.method(),
-                    http.url(),
+                    requestUrl,
                     http.headers(),
                     query,
                     "json",
@@ -31,7 +40,7 @@ public final class HttpRequestAssembler {
         if ("form-urlencoded".equals(bodyType)) {
             return new TrialRequestDto(
                     http.method(),
-                    http.url(),
+                    requestUrl,
                     http.headers(),
                     query,
                     "form-urlencoded",
@@ -42,7 +51,7 @@ public final class HttpRequestAssembler {
         }
         return new TrialRequestDto(
                 http.method(),
-                http.url(),
+                requestUrl,
                 http.headers(),
                 query,
                 "none",

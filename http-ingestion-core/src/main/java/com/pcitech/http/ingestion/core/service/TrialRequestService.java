@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -47,7 +48,15 @@ public class TrialRequestService {
                     .body(resolveBodyInserter(method, request))
                     .exchangeToMono(response -> response.bodyToMono(String.class)
                             .defaultIfEmpty("")
-                            .map(body -> new ResponseHolder(response.statusCode().value(), body)))
+                            .map(body -> {
+                                Map<String, String> headerMap = new HashMap<>();
+                                response.headers().asHttpHeaders().forEach((name, values) -> {
+                                    if (!values.isEmpty()) {
+                                        headerMap.put(name, String.join(", ", values));
+                                    }
+                                });
+                                return new ResponseHolder(response.statusCode().value(), body, headerMap);
+                            }))
                     .timeout(Duration.ofMillis(request.timeoutMs()))
                     .block();
 
@@ -55,10 +64,14 @@ public class TrialRequestService {
             if (holder == null) {
                 return TrialResponseDto.failure("Empty response", duration);
             }
-            return toTrialResponse(holder.statusCode(), holder.body(), duration);
+            return toTrialResponse(holder.statusCode(), holder.body(), duration, holder.responseHeaders());
         } catch (WebClientResponseException ex) {
             long duration = System.currentTimeMillis() - start;
-            return toTrialResponse(ex.getStatusCode().value(), ex.getResponseBodyAsString(), duration);
+            return toTrialResponse(
+                    ex.getStatusCode().value(),
+                    ex.getResponseBodyAsString(),
+                    duration,
+                    toHeaderMap(ex.getHeaders()));
         } catch (Exception ex) {
             return TrialResponseDto.failure(ex.getMessage(), System.currentTimeMillis() - start);
         }
@@ -86,12 +99,30 @@ public class TrialRequestService {
         return formData;
     }
 
-    private TrialResponseDto toTrialResponse(int statusCode, String body, long duration) {
+    private TrialResponseDto toTrialResponse(
+            int statusCode,
+            String body,
+            long duration,
+            Map<String, String> responseHeaders
+    ) {
         String safeBody = body == null ? "" : body;
         long length = safeBody.getBytes(StandardCharsets.UTF_8).length;
         boolean truncated = length > MAX_BODY_BYTES;
         String output = truncated ? truncateUtf8(safeBody, MAX_BODY_BYTES) : safeBody;
-        return TrialResponseDto.success(statusCode, duration, output, truncated, length);
+        return TrialResponseDto.success(statusCode, duration, output, truncated, length, responseHeaders);
+    }
+
+    private Map<String, String> toHeaderMap(HttpHeaders headers) {
+        Map<String, String> result = new HashMap<>();
+        if (headers == null) {
+            return result;
+        }
+        headers.forEach((name, values) -> {
+            if (values != null && !values.isEmpty()) {
+                result.put(name, String.join(", ", values));
+            }
+        });
+        return result;
     }
 
     private String truncateUtf8(String value, int maxBytes) {
@@ -133,6 +164,6 @@ public class TrialRequestService {
         }
     }
 
-    private record ResponseHolder(int statusCode, String body) {
+    private record ResponseHolder(int statusCode, String body, Map<String, String> responseHeaders) {
     }
 }

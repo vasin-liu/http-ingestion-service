@@ -361,6 +361,36 @@ public final class ConnectorConfigFactory {
         return config;
     }
 
+    public static JsonNode linkHeaderItemsConfig(ObjectMapper objectMapper, String baseUrl) {
+        ObjectNode config = objectMapper.createObjectNode();
+        ObjectNode http = config.putObject("http");
+        http.put("method", "GET");
+        http.put("url", baseUrl + "/items");
+        http.put("timeout_ms", 30000);
+        http.putObject("headers");
+        http.putObject("query");
+
+        ObjectNode pagination = config.putObject("pagination");
+        pagination.put("strategy", "link_header");
+        pagination.put("link_header_name", "Link");
+        pagination.put("link_rel", "next");
+        pagination.putArray("stop_when").add("no_next_link").add("empty_page");
+        pagination.put("max_pages", 10);
+
+        ObjectNode transform = config.putObject("transform");
+        transform.put("input_root", "$.data");
+        ArrayNode steps = transform.putArray("steps");
+        ObjectNode step = steps.addObject();
+        step.put("type", "map_fields");
+        ArrayNode mappings = step.putArray("mappings");
+        mappings.addObject().put("target", "id").put("source", "$.id").put("type", "long");
+        mappings.addObject().put("target", "name").put("source", "$.name").put("type", "string");
+
+        appendSink(config, "users", "id");
+        config.putObject("incremental").put("enabled", false);
+        return config;
+    }
+
     public static JsonNode kafkaWireMockUsersConfig(ObjectMapper objectMapper, String wireMockBaseUrl, String topic) {
         ObjectNode config = objectMapper.createObjectNode();
 
