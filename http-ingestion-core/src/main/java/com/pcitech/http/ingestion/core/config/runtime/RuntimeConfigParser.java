@@ -135,9 +135,25 @@ public final class RuntimeConfigParser {
         if (node.isMissingNode() || node.isNull() || !node.path("enabled").asBoolean(false)) {
             return RuntimeConnectorConfig.IncrementalSettings.disabled();
         }
+        String mode = text(node, "mode", "timestamp");
+        if ("monotonic_id".equalsIgnoreCase(mode)) {
+            JsonNode monotonic = node.path("monotonic_id");
+            return new RuntimeConnectorConfig.IncrementalSettings(
+                    true,
+                    "monotonic_id",
+                    text(monotonic, "response_path", "$.id"),
+                    text(monotonic, "request_param", "since_id"),
+                    text(monotonic, "request_target", text(node, "request_target", "query")),
+                    text(monotonic, "request_body_path", null),
+                    null,
+                    null,
+                    null
+            );
+        }
         JsonNode ts = node.path("timestamp");
         return new RuntimeConnectorConfig.IncrementalSettings(
                 true,
+                "timestamp",
                 ts.path("response_path").asText("$.updated_at"),
                 ts.path("request_param").asText("updated_after"),
                 text(ts, "request_target", text(node, "request_target", "query")),

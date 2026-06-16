@@ -8,6 +8,7 @@ import com.pcitech.http.ingestion.core.config.runtime.RuntimeConnectorConfig;
 import com.pcitech.http.ingestion.core.domain.ConnectorState;
 import com.pcitech.http.ingestion.core.domain.ConnectorVersion;
 import com.pcitech.http.ingestion.core.domain.JobRun;
+import com.pcitech.http.ingestion.core.domain.WatermarkState;
 import com.pcitech.http.ingestion.core.engine.HttpPullEngine;
 import com.pcitech.http.ingestion.core.engine.TransformPipeline;
 import com.pcitech.http.ingestion.core.metrics.IngestionMetrics;
@@ -113,7 +114,7 @@ public class SyncService {
             RuntimeConnectorConfig config = RuntimeConfigParser.parse(configNode, objectMapper);
             validateConfig(config, options);
 
-            Instant watermark = readWatermark(connectorId);
+            WatermarkState watermark = readWatermarkState(connectorId);
             boolean incrementalMode = resolveIncrementalMode(options, config, watermark);
             Integer maxRecords = options.type() == SyncType.SAMPLE ? options.recordLimit() : null;
 
@@ -155,11 +156,19 @@ public class SyncService {
 
             if (options.type() != SyncType.SAMPLE
                     && config.incremental().enabled()
-                    && pullResult.maxTimestamp() != null) {
+                    && hasPersistableWatermark(pullResult.watermarkState(), config.incremental())) {
                 ObjectNode wm = objectMapper.createObjectNode();
-                wm.put("timestamp", pullResult.maxTimestamp().toString());
+                WatermarkState state = pullResult.watermarkState();
+                if (state.hasTimestamp()) {
+                    wm.put("timestamp", state.timestamp().toString());
+                }
+                if (state.hasLastId()) {
+                    wm.put("last_id", state.lastId());
+                }
                 stateRepository.upsertWatermark(connectorId, objectMapper.writeValueAsString(wm));
-                ingestionMetrics.updateWatermarkLag(connectorId, pullResult.maxTimestamp());
+                if (!config.incremental().isMonotonicId() && state.hasTimestamp()) {
+                    ingestionMetrics.updateWatermarkLag(connectorId, state.timestamp());
+                }
             }
 
             jobRunRepository.markSuccess(jobRunId, recordsOk, recordsFailed);
@@ -210,35 +219,60 @@ public class SyncService {
         }
     }
 
-    private Instant readWatermark(String connectorId) {
+    private WatermarkState readWatermarkState(String connectorId) {
         return stateRepository.findByConnectorId(connectorId)
                 .map(ConnectorState::watermarkJson)
-                .map(this::parseWatermark)
-                .orElse(null);
+                .map(this::parseWatermarkState)
+                .orElse(WatermarkState.empty());
     }
 
-    private Instant parseWatermark(String json) {
+    private WatermarkState parseWatermarkState(String json) {
         if (json == null) {
-            return null;
+            return WatermarkState.empty();
         }
         try {
             JsonNode node = objectMapper.readTree(json);
-            if (node.hasNonNull("timestamp")) {
-                return Instant.parse(node.get("timestamp").asText());
-            }
+            Instant timestamp = node.hasNonNull("timestamp")
+                    ? Instant.parse(node.get("timestamp").asText())
+                    : null;
+            String lastId = node.hasNonNull("last_id") ? node.get("last_id").asText() : null;
+            return new WatermarkState(timestamp, lastId);
         } catch (Exception ignored) {
         }
-        return null;
+        return WatermarkState.empty();
     }
 
-    private boolean resolveIncrementalMode(SyncOptions options, RuntimeConnectorConfig config, Instant watermark) {
+    private Instant parseWatermark(String json) {
+        return parseWatermarkState(json).timestamp();
+    }
+
+    private boolean hasPersistableWatermark(
+            WatermarkState watermark,
+            RuntimeConnectorConfig.IncrementalSettings incremental
+    ) {
+        if (watermark == null) {
+            return false;
+        }
+        if (incremental.isMonotonicId()) {
+            return watermark.hasLastId();
+        }
+        return watermark.hasTimestamp();
+    }
+
+    private boolean resolveIncrementalMode(SyncOptions options, RuntimeConnectorConfig config, WatermarkState watermark) {
         if (options.type() == SyncType.FULL || options.type() == SyncType.SAMPLE) {
             return false;
         }
         if (!config.incremental().enabled()) {
             return false;
         }
-        if (watermark == null) {
+        if (config.incremental().isMonotonicId()) {
+            if (!watermark.hasLastId()) {
+                return !"full".equalsIgnoreCase(config.sync().onFirstRun());
+            }
+            return true;
+        }
+        if (!watermark.hasTimestamp()) {
             return !"full".equalsIgnoreCase(config.sync().onFirstRun());
         }
         return true;

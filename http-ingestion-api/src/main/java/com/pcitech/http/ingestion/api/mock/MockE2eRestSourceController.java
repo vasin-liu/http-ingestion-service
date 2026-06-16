@@ -10,11 +10,20 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @Profile("e2e")
 @RequestMapping("/mock/e2e")
 public class MockE2eRestSourceController {
+
+    private static final List<Map<String, Object>> MONOTONIC_ITEMS = List.of(
+            Map.of("id", 1, "name", "Alice"),
+            Map.of("id", 2, "name", "Bob"),
+            Map.of("id", 3, "name", "Carol"),
+            Map.of("id", 4, "name", "Dave"),
+            Map.of("id", 5, "name", "Eve")
+    );
 
     @GetMapping("/kafka-users")
     public List<Map<String, Object>> kafkaUsers() {
@@ -73,5 +82,19 @@ public class MockE2eRestSourceController {
         }
         return ResponseEntity.ok()
                 .body(Map.of("data", List.of(Map.of("id", 3, "name", "Carol"))));
+    }
+
+    @GetMapping("/monotonic-items")
+    public Map<String, Object> monotonicItems(@RequestParam(name = "since_id", required = false) String sinceId) {
+        List<Map<String, Object>> filtered;
+        if (sinceId == null || sinceId.isBlank()) {
+            filtered = MONOTONIC_ITEMS;
+        } else {
+            long since = Long.parseLong(sinceId);
+            filtered = MONOTONIC_ITEMS.stream()
+                    .filter(item -> ((Number) item.get("id")).longValue() > since)
+                    .collect(Collectors.toList());
+        }
+        return Map.of("data", filtered);
     }
 }

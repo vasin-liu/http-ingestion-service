@@ -68,6 +68,7 @@ public record RuntimeConnectorConfig(
 
     public record IncrementalSettings(
             boolean enabled,
+            String mode,
             String responsePath,
             String requestParam,
             String requestTarget,
@@ -77,7 +78,11 @@ public record RuntimeConnectorConfig(
             String overlap
     ) {
         public static IncrementalSettings disabled() {
-            return new IncrementalSettings(false, null, null, "query", null, null, "iso_instant", "5m");
+            return new IncrementalSettings(false, "timestamp", null, null, "query", null, null, "iso_instant", "5m");
+        }
+
+        public boolean isMonotonicId() {
+            return "monotonic_id".equalsIgnoreCase(mode);
         }
     }
 

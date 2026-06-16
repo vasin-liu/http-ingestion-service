@@ -22,6 +22,13 @@
 - Mock：`GET /mock/e2e/link-items`
 - 测试：`LinkHeaderSupportTest`、`HttpIngestionE2ETest.LinkHeaderPull`、`link-header-pagination.spec.ts`
 
+### monotonic_id 增量
+
+- Core：`incremental.mode: monotonic_id`（`since_id` 查询参数、`WatermarkState.last_id` 水位）
+- 模板：`rest-monotonic-id`（第 7 个 example 模板）
+- Mock：`GET /mock/e2e/monotonic-items`
+- 测试：`IncrementalSupportTest`、`RuntimeConfigParserMonotonicIdTest`、`HttpIngestionE2ETest.MonotonicIdPull`、`monotonic-id-incremental.spec.ts`
+
 ### OpenAPI 导入（通用化）
 
 - API：`POST /api/openapi/parse`（OAS3 + Swagger 2.0，URL 拉取最大 16MB）

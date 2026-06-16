@@ -105,6 +105,18 @@ public class JsonPathSupport {
         return context.read(path.startsWith("$") ? path : "$." + path);
     }
 
+    public String readMonotonicId(Object record, String path) {
+        Object value = readValue(record, path);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return String.valueOf(number.longValue());
+        }
+        String text = String.valueOf(value);
+        return text.isBlank() ? null : text;
+    }
+
     public Instant readInstant(Object record, String path) {
         Object value = readValue(record, path);
         if (value == null) {

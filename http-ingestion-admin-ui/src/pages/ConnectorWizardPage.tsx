@@ -81,6 +81,8 @@ export default function ConnectorWizardPage() {
   const paginationStrategy = Form.useWatch(['pagination', 'strategy'], form) ?? 'page_page_size';
   const isCursorPagination = paginationStrategy === 'cursor';
   const isLinkHeaderPagination = paginationStrategy === 'link_header';
+  const incrementalMode = Form.useWatch(['incremental', 'mode'], form) ?? 'timestamp';
+  const isMonotonicIncremental = incrementalMode === 'monotonic_id';
   const isKafkaSink = sinkSettings?.type === 'kafka';
   const openapiMetaFromForm = Form.useWatch('openapi_meta', form) as OpenApiMeta | undefined;
   const requestSchemaFromForm = parseRequestSchema(openapiMetaFromForm?.request_schema);
@@ -762,12 +764,40 @@ export default function ConnectorWizardPage() {
             >
               <Switch />
             </Form.Item>
-            <Form.Item name={['incremental', 'timestamp', 'response_path']} label={t('connectorWizard.timestampPath')}>
-              <Input />
+            <Form.Item name={['incremental', 'mode']} label={t('connectorWizard.incrementalMode')}>
+              <Select
+                data-testid="incremental-mode"
+                options={[
+                  { value: 'timestamp', label: 'timestamp' },
+                  { value: 'monotonic_id', label: 'monotonic_id' },
+                ]}
+              />
             </Form.Item>
-            <Form.Item name={['incremental', 'timestamp', 'request_param']} label={t('connectorWizard.incrementalParam')}>
-              <Input />
-            </Form.Item>
+            {isMonotonicIncremental ? (
+              <>
+                <Form.Item
+                  name={['incremental', 'monotonic_id', 'response_path']}
+                  label={t('connectorWizard.monotonicIdPath')}
+                >
+                  <Input placeholder="$.id" data-testid="monotonic-id-path" />
+                </Form.Item>
+                <Form.Item
+                  name={['incremental', 'monotonic_id', 'request_param']}
+                  label={t('connectorWizard.incrementalParam')}
+                >
+                  <Input placeholder="since_id" data-testid="monotonic-id-param" />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item name={['incremental', 'timestamp', 'response_path']} label={t('connectorWizard.timestampPath')}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name={['incremental', 'timestamp', 'request_param']} label={t('connectorWizard.incrementalParam')}>
+                  <Input />
+                </Form.Item>
+              </>
+            )}
           </div>
 
           <div style={{ display: step === 4 ? 'block' : 'none' }}>

@@ -165,7 +165,9 @@ export type LocaleMessages = {
     pageSize: string;
     totalJsonPath: string;
     incrementalEnabled: string;
+    incrementalMode: string;
     timestampPath: string;
+    monotonicIdPath: string;
     incrementalParam: string;
     mappingTarget1: string;
     mappingSource1: string;

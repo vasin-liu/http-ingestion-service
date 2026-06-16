@@ -2,6 +2,7 @@ package com.pcitech.http.ingestion.core.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pcitech.http.ingestion.core.config.runtime.RuntimeConnectorConfig;
+import com.pcitech.http.ingestion.core.domain.WatermarkState;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -21,15 +22,16 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "$.capTime", null, "body", "condition.startTime", "condition.endTime", "dahua_utc", "5m"
+                true, "timestamp", "$.capTime", null, "body", "condition.startTime", "condition.endTime", "dahua_utc", "5m"
         );
         String template = """
                 {"page":1,"pageSize":100,"condition":{}}
                 """;
         Instant watermark = Instant.parse("2025-06-01T08:30:00Z");
+        WatermarkState watermarkState = new WatermarkState(watermark, null);
 
         String body = RequestBodyComposer.compose(
-                objectMapper, template, pagination, incremental, 2, watermark, true
+                objectMapper, template, pagination, incremental, 2, watermarkState, true
         );
 
         var root = objectMapper.readTree(body);
@@ -51,10 +53,10 @@ class RequestBodyComposerTest {
                 """;
 
         String pageZero = RequestBodyComposer.compose(
-                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(), 0, null, false
+                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(), 0, WatermarkState.empty(), false
         );
         String pageOne = RequestBodyComposer.compose(
-                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(), 1, null, false
+                objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(), 1, WatermarkState.empty(), false
         );
 
         var first = objectMapper.readTree(pageZero);
@@ -73,13 +75,13 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "$.capTime", null, "body", "startTimeStrUtc", "endTimeStrUtc", "dahua_utc", "5m"
+                true, "timestamp", "$.capTime", null, "body", "startTimeStrUtc", "endTimeStrUtc", "dahua_utc", "5m"
         );
         String template = "{}";
-        Instant watermark = Instant.parse("2025-06-01T08:30:00Z");
+        WatermarkState watermarkState = new WatermarkState(Instant.parse("2025-06-01T08:30:00Z"), null);
 
         String body = RequestBodyComposer.compose(
-                objectMapper, template, pagination, incremental, 1, watermark, true
+                objectMapper, template, pagination, incremental, 1, watermarkState, true
         );
 
         var root = objectMapper.readTree(body);
@@ -95,15 +97,16 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "$.evcc", null, "body", "params.evcc", null, "meiya_datetime", "5m"
+                true, "timestamp", "$.evcc", null, "body", "params.evcc", null, "meiya_datetime", "5m"
         );
         String template = """
                 {"params":{},"page":{"skip":0,"limit":100}}
                 """;
         Instant watermark = Instant.parse("2025-06-01T08:30:00Z");
+        WatermarkState watermarkState = new WatermarkState(watermark, null);
 
         String body = RequestBodyComposer.compose(
-                objectMapper, template, pagination, incremental, 2, watermark, true
+                objectMapper, template, pagination, incremental, 2, watermarkState, true
         );
 
         var root = objectMapper.readTree(body);
@@ -126,7 +129,7 @@ class RequestBodyComposerTest {
 
         String first = RequestBodyComposer.composeWithCursor(
                 objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(),
-                null, true, null, false
+                null, true, WatermarkState.empty(), false
         );
         var firstRoot = objectMapper.readTree(first);
         assertThat(firstRoot.path("pageToken").isMissingNode()
@@ -134,7 +137,7 @@ class RequestBodyComposerTest {
 
         String second = RequestBodyComposer.composeWithCursor(
                 objectMapper, template, pagination, RuntimeConnectorConfig.IncrementalSettings.disabled(),
-                "tok-2", false, null, false
+                "tok-2", false, WatermarkState.empty(), false
         );
         assertThat(objectMapper.readTree(second).path("pageToken").asText()).isEqualTo("tok-2");
     }

@@ -1,12 +1,11 @@
 package com.pcitech.http.ingestion.core.engine;
 
 import com.pcitech.http.ingestion.core.config.runtime.RuntimeConnectorConfig;
+import com.pcitech.http.ingestion.core.domain.WatermarkState;
 import com.pcitech.http.ingestion.core.dto.TrialResponseDto;
 import com.pcitech.http.ingestion.core.service.TrialRequestService;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +31,7 @@ public class HttpPullEngine {
 
     public PullResult pull(
             RuntimeConnectorConfig config,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             PullProgressListener listener
     ) {
@@ -41,7 +40,7 @@ public class HttpPullEngine {
 
     public PullResult pull(
             RuntimeConnectorConfig config,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             Integer maxRecords,
             PullProgressListener listener
@@ -61,10 +60,10 @@ public class HttpPullEngine {
             return pullWithLinkHeader(config, watermark, incrementalMode, maxRecords, listener, pagination, http);
         }
 
+        WatermarkState wmState = watermark == null ? WatermarkState.empty() : watermark;
         List<Object> allRecords = new ArrayList<>();
-        Instant maxTimestamp = watermark;
         int page = pagination.pageStart();
-        Integer totalPages = resolveTotalPages(config, http, pagination, watermark, incrementalMode, page);
+        Integer totalPages = resolveTotalPages(config, http, pagination, wmState, incrementalMode, page);
 
         for (int pageIndex = 0; pageIndex < pagination.maxPages(); pageIndex++) {
             Map<String, String> query = new HashMap<>(http.query());
@@ -76,12 +75,12 @@ public class HttpPullEngine {
                         pagination,
                         config.incremental(),
                         page,
-                        watermark,
+                        wmState,
                         incrementalMode
                 );
             } else {
                 applyPagination(query, pagination, page);
-                applyIncremental(query, config.incremental(), watermark, incrementalMode);
+                IncrementalSupport.applyQuery(query, config.incremental(), wmState, incrementalMode);
                 if (http.bodyJson() != null && !http.bodyJson().isBlank()) {
                     requestBody = RequestBodyComposer.compose(
                             objectMapper,
@@ -89,7 +88,7 @@ public class HttpPullEngine {
                             pagination,
                             config.incremental(),
                             page,
-                            watermark,
+                            wmState,
                             incrementalMode
                     );
                 }
@@ -126,14 +125,7 @@ public class HttpPullEngine {
                 break;
             }
 
-            if (config.incremental() != null && config.incremental().enabled()) {
-                for (Object record : pageRecords) {
-                    Instant ts = jsonPathSupport.readInstant(record, config.incremental().responsePath());
-                    if (ts != null && (maxTimestamp == null || ts.isAfter(maxTimestamp))) {
-                        maxTimestamp = ts;
-                    }
-                }
-            }
+            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
 
             if (totalPages == null
                     && pagination.totalCountPath() != null
@@ -149,17 +141,15 @@ public class HttpPullEngine {
             page++;
         }
 
-        if (incrementalMode && config.incremental() != null && config.incremental().enabled()
-                && (maxTimestamp == null || watermark == null || !maxTimestamp.isAfter(watermark))) {
-            maxTimestamp = Instant.now();
-        }
+        wmState = IncrementalSupport.bumpTimestampIfUnchanged(
+                wmState, watermark, config.incremental(), incrementalMode);
 
-        return new PullResult(allRecords, maxTimestamp);
+        return new PullResult(allRecords, wmState);
     }
 
     private PullResult pullWithCursor(
             RuntimeConnectorConfig config,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             Integer maxRecords,
             PullProgressListener listener,
@@ -170,8 +160,8 @@ public class HttpPullEngine {
             throw new IllegalArgumentException("pagination.cursor_response_path is required for cursor strategy");
         }
 
+        WatermarkState wmState = watermark == null ? WatermarkState.empty() : watermark;
         List<Object> allRecords = new ArrayList<>();
-        Instant maxTimestamp = watermark;
         String cursor = null;
         boolean firstPage = true;
 
@@ -187,12 +177,12 @@ public class HttpPullEngine {
                         config.incremental(),
                         cursor,
                         firstPage,
-                        watermark,
+                        wmState,
                         incrementalMode
                 );
             } else {
                 CursorPaginationSupport.applyCursorQuery(query, pagination, cursor, firstPage);
-                applyIncremental(query, config.incremental(), watermark, incrementalMode);
+                IncrementalSupport.applyQuery(query, config.incremental(), wmState, incrementalMode);
                 if (http.bodyJson() != null && !http.bodyJson().isBlank()) {
                     requestBody = RequestBodyComposer.composeWithCursor(
                             objectMapper,
@@ -201,7 +191,7 @@ public class HttpPullEngine {
                             config.incremental(),
                             cursor,
                             firstPage,
-                            watermark,
+                            wmState,
                             incrementalMode
                     );
                 }
@@ -232,14 +222,7 @@ public class HttpPullEngine {
                 }
             }
 
-            if (config.incremental() != null && config.incremental().enabled()) {
-                for (Object record : pageRecords) {
-                    Instant ts = jsonPathSupport.readInstant(record, config.incremental().responsePath());
-                    if (ts != null && (maxTimestamp == null || ts.isAfter(maxTimestamp))) {
-                        maxTimestamp = ts;
-                    }
-                }
-            }
+            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
 
             if (maxRecords != null && allRecords.size() >= maxRecords) {
                 break;
@@ -255,17 +238,15 @@ public class HttpPullEngine {
             firstPage = false;
         }
 
-        if (incrementalMode && config.incremental() != null && config.incremental().enabled()
-                && (maxTimestamp == null || watermark == null || !maxTimestamp.isAfter(watermark))) {
-            maxTimestamp = Instant.now();
-        }
+        wmState = IncrementalSupport.bumpTimestampIfUnchanged(
+                wmState, watermark, config.incremental(), incrementalMode);
 
-        return new PullResult(allRecords, maxTimestamp);
+        return new PullResult(allRecords, wmState);
     }
 
     private PullResult pullWithLinkHeader(
             RuntimeConnectorConfig config,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             Integer maxRecords,
             PullProgressListener listener,
@@ -273,14 +254,14 @@ public class HttpPullEngine {
             RuntimeConnectorConfig.HttpSettings http
     ) {
         List<Object> allRecords = new ArrayList<>();
-        Instant maxTimestamp = watermark;
+        WatermarkState wmState = watermark == null ? WatermarkState.empty() : watermark;
         String currentUrl = http.url();
         boolean firstPage = true;
 
         for (int pageIndex = 0; pageIndex < pagination.maxPages(); pageIndex++) {
             Map<String, String> query = firstPage ? new HashMap<>(http.query()) : Map.of();
             if (firstPage) {
-                applyIncremental(query, config.incremental(), watermark, incrementalMode);
+                IncrementalSupport.applyQuery(query, config.incremental(), wmState, incrementalMode);
             }
             String requestBody = null;
             if (firstPage && http.bodyJson() != null && !http.bodyJson().isBlank()) {
@@ -290,7 +271,7 @@ public class HttpPullEngine {
                         pagination,
                         config.incremental(),
                         pagination.pageStart(),
-                        watermark,
+                        wmState,
                         incrementalMode
                 );
             }
@@ -320,14 +301,7 @@ public class HttpPullEngine {
                 }
             }
 
-            if (config.incremental() != null && config.incremental().enabled()) {
-                for (Object record : pageRecords) {
-                    Instant ts = jsonPathSupport.readInstant(record, config.incremental().responsePath());
-                    if (ts != null && (maxTimestamp == null || ts.isAfter(maxTimestamp))) {
-                        maxTimestamp = ts;
-                    }
-                }
-            }
+            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
 
             if (maxRecords != null && allRecords.size() >= maxRecords) {
                 break;
@@ -347,12 +321,10 @@ public class HttpPullEngine {
             firstPage = false;
         }
 
-        if (incrementalMode && config.incremental() != null && config.incremental().enabled()
-                && (maxTimestamp == null || watermark == null || !maxTimestamp.isAfter(watermark))) {
-            maxTimestamp = Instant.now();
-        }
+        wmState = IncrementalSupport.bumpTimestampIfUnchanged(
+                wmState, watermark, config.incremental(), incrementalMode);
 
-        return new PullResult(allRecords, maxTimestamp);
+        return new PullResult(allRecords, wmState);
     }
 
     private void applyPagination(Map<String, String> query, RuntimeConnectorConfig.PaginationSettings pagination, int page) {
@@ -367,44 +339,11 @@ public class HttpPullEngine {
         query.put(pagination.pageSizeParam(), String.valueOf(pagination.pageSize()));
     }
 
-    private void applyIncremental(
-            Map<String, String> query,
-            RuntimeConnectorConfig.IncrementalSettings incremental,
-            Instant watermark,
-            boolean incrementalMode
-    ) {
-        if (!incrementalMode || incremental == null || !incremental.enabled() || watermark == null) {
-            return;
-        }
-        if (!"query".equalsIgnoreCase(incremental.requestTarget())) {
-            return;
-        }
-        Instant effective = watermark.minus(parseOverlap(incremental.overlap()));
-        query.put(incremental.requestParam(), effective.toString());
-    }
-
-    private Duration parseOverlap(String overlap) {
-        if (overlap == null || overlap.isBlank()) {
-            return Duration.ZERO;
-        }
-        String value = overlap.trim().toLowerCase();
-        if (value.endsWith("m")) {
-            return Duration.ofMinutes(Long.parseLong(value.substring(0, value.length() - 1)));
-        }
-        if (value.endsWith("h")) {
-            return Duration.ofHours(Long.parseLong(value.substring(0, value.length() - 1)));
-        }
-        if (value.endsWith("s")) {
-            return Duration.ofSeconds(Long.parseLong(value.substring(0, value.length() - 1)));
-        }
-        return Duration.ofMinutes(5);
-    }
-
     private Integer resolveTotalPages(
             RuntimeConnectorConfig config,
             RuntimeConnectorConfig.HttpSettings http,
             RuntimeConnectorConfig.PaginationSettings pagination,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             int page
     ) {
@@ -422,7 +361,7 @@ public class HttpPullEngine {
             RuntimeConnectorConfig config,
             RuntimeConnectorConfig.HttpSettings http,
             RuntimeConnectorConfig.PaginationSettings pagination,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode,
             int page
     ) {
@@ -473,7 +412,7 @@ public class HttpPullEngine {
         return jsonPathSupport.readInteger(response.body(), pagination.totalCountPath());
     }
 
-    public record PullResult(List<Object> records, Instant maxTimestamp) {
+    public record PullResult(List<Object> records, WatermarkState watermarkState) {
     }
 
     public interface PullProgressListener {

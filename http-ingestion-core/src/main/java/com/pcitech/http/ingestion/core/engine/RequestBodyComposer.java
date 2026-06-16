@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.pcitech.http.ingestion.core.config.runtime.RuntimeConnectorConfig;
+import com.pcitech.http.ingestion.core.domain.WatermarkState;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -29,7 +30,7 @@ public final class RequestBodyComposer {
             RuntimeConnectorConfig.PaginationSettings pagination,
             RuntimeConnectorConfig.IncrementalSettings incremental,
             int page,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode
     ) {
         try {
@@ -54,7 +55,7 @@ public final class RequestBodyComposer {
             RuntimeConnectorConfig.IncrementalSettings incremental,
             String cursor,
             boolean firstPage,
-            Instant watermark,
+            WatermarkState watermark,
             boolean incrementalMode
     ) {
         try {
@@ -121,12 +122,27 @@ public final class RequestBodyComposer {
     private static void applyBodyIncremental(
             ObjectNode root,
             RuntimeConnectorConfig.IncrementalSettings incremental,
-            Instant watermark
+            WatermarkState watermark
     ) {
-        if (watermark == null || incremental.requestBodyPath() == null || incremental.requestBodyPath().isBlank()) {
+        if (incremental.isMonotonicId()) {
+            String path = incremental.requestBodyPath() != null && !incremental.requestBodyPath().isBlank()
+                    ? incremental.requestBodyPath()
+                    : incremental.requestParam();
+            if (!watermark.hasLastId() || path == null || path.isBlank()) {
+                return;
+            }
+            try {
+                long id = Long.parseLong(watermark.lastId());
+                setByPath(root, path, JsonNodeFactory.instance.numberNode(id));
+            } catch (NumberFormatException ex) {
+                setByPath(root, path, TextNode.valueOf(watermark.lastId()));
+            }
             return;
         }
-        Instant effective = watermark.minus(parseOverlap(incremental.overlap()));
+        if (!watermark.hasTimestamp() || incremental.requestBodyPath() == null || incremental.requestBodyPath().isBlank()) {
+            return;
+        }
+        Instant effective = watermark.timestamp().minus(parseOverlap(incremental.overlap()));
         Instant end = Instant.now().plus(1, ChronoUnit.MINUTES);
         if (incremental.requestBodyEndPath() != null && !incremental.requestBodyEndPath().isBlank()) {
             setByPath(root, incremental.requestBodyPath(), textNode(formatTime(effective, incremental.timeFormat())));

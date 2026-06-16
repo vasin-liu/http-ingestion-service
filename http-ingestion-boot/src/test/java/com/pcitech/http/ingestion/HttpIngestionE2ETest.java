@@ -89,7 +89,7 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
 
             var templates = restTemplate.getForEntity("/api/templates", List.class);
             assertThat(templates.getBody()).isNotNull();
-            assertThat(templates.getBody().size()).isEqualTo(6);
+            assertThat(templates.getBody().size()).isEqualTo(7);
 
             JobRun fullJob = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
@@ -1065,6 +1065,65 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
                     syncService.triggerAsync("e2e-link-header", SyncService.SyncOptions.full()));
             assertThat(job.status()).as("job error: %s", job.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
             assertThat(job.recordsOk()).isEqualTo(3);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(3);
+            }
+        }
+    }
+
+    @Nested
+    class MonotonicIdPull {
+
+        @BeforeEach
+        void stubMonotonicItems() {
+            WIREMOCK.resetAll();
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .withQueryParam("since_id", equalTo("2"))
+                    .atPriority(1)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":3,"name":"C"}]}
+                                    """)));
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .atPriority(2)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":1,"name":"A"},{"id":2,"name":"B"}]}
+                                    """)));
+        }
+
+        @Test
+        void wireMockMonotonicId_fullThenIncremental() throws Exception {
+            JsonNode config = ConnectorConfigFactory.monotonicItemsConfig(
+                    objectMapper,
+                    "http://localhost:" + WIREMOCK.getPort()
+            );
+            connectorService.create(new ConnectorRequestDto("e2e-monotonic-id", "Monotonic ID Items", "pull", config));
+            connectorService.publish("e2e-monotonic-id");
+
+            JobRun fullJob = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-monotonic-id", SyncService.SyncOptions.full()));
+            assertThat(fullJob.status()).as("job error: %s", fullJob.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(fullJob.recordsOk()).isEqualTo(2);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(2);
+            }
+
+            var state = syncService.getState("e2e-monotonic-id");
+            assertThat(state).isPresent();
+            assertThat(state.get().watermarkJson()).contains("\"last_id\":\"2\"");
+
+            JobRun incrementalJob = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-monotonic-id", SyncService.SyncOptions.incremental()));
+            assertThat(incrementalJob.status()).as("job error: %s", incrementalJob.errorMessage())
+                    .isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(incrementalJob.recordsOk()).isEqualTo(1);
 
             try (var connection = pgConnection()) {
                 assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(3);

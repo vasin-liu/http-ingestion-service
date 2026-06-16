@@ -6,6 +6,7 @@ const EXAMPLE_TEMPLATE_IDS = [
   'rest-kafka',
   'rest-cursor',
   'rest-link-header',
+  'rest-monotonic-id',
   'webhook-json-array',
 ] as const;
 
