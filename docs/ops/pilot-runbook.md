@@ -38,14 +38,25 @@
 
 适用于无真实源地址时验证调度、指标与 UI 排错。使用 **示例模板** + 内置 Mock（`e2e` profile 下可用；`deploy.ps1` 默认启用）。
 
-| 模板 ID | 目标表 | Cron 建议 | Mock URL（相对服务根） |
-|---------|--------|-----------|------------------------|
-| `rest-pagination` | `items` | `0 0/15 * * * ?` | `/mock/e2e/pagination-items` |
-| `rest-offset-limit` | `items` | `0 5/15 * * * ?` | 同上（向导中改分页策略为 offset/limit） |
-| `rest-kafka` | Kafka topic | `0 10/15 * * * ?` | `/mock/e2e/kafka-users`（需 `EXTERNAL_KAFKA_BOOTSTRAP_SERVERS`） |
-| `webhook-json-array` | `webhook_events` | 无 Cron（Push） | 外部调用 `POST /ingress/{connectorId}` |
+**一键 bootstrap**（推荐）：
 
-**佳都 Push 演练**（可选）：从 `webhook-json-array` 或空白向导创建 Push 连接器，使用 Mock 模拟器 `POST /mock/jiadu/push/simulate`（见 `docs/api/jiadu-push-integration.md`），目标表 `jiadu_event_info`。
+```powershell
+.\scripts\podman\deploy.ps1
+.\scripts\pilot\setup-mock-pilot.ps1
+.\scripts\pilot\collect-daily-metrics.ps1   # 每日执行
+```
+
+报告：`docs/ops/pilot-report-2026-06.md`。详见 `scripts/pilot/README.md`。
+
+| 模板 ID | 试点 connector_id | 目标表 | Cron 建议 | Mock URL（相对服务根） |
+|---------|-------------------|--------|-----------|------------------------|
+| `rest-pagination` | `pilot-mock-pagination` | `items` | `0 0/15 * * * ?` | `/mock/e2e/pagination-items` |
+| `rest-offset-limit` | `pilot-mock-offset-limit` | `items` | `0 5/15 * * * ?` | 同上 |
+| `rest-cursor` | `pilot-mock-cursor` | `items` | `0 10/15 * * * ?` | `/mock/e2e/cursor-items` |
+| `rest-kafka` | `pilot-mock-kafka` | Kafka topic | `0 15/15 * * * ?` | `/mock/e2e/kafka-users` |
+| Jiadu Push | `pilot-mock-jiadu` | `jiadu_event_info` | 无 Cron | `POST /mock/jiadu/push/{connectorId}` |
+
+**佳都 Push 演练**：`setup-mock-pilot.ps1` 默认创建 `pilot-mock-jiadu` 并发送 3 轮模拟事件；详见 `docs/api/jiadu-push-integration.md`。
 
 Cron 错开分钟，降低 PG、HTTP 与调度争用。
 

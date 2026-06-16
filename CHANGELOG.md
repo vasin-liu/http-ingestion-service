@@ -2,12 +2,25 @@
 
 ## [Unreleased]
 
+### Mock 试点（路径 B 试运行）
+
+- 脚本：`scripts/pilot/setup-mock-pilot.ps1`、`collect-daily-metrics.ps1`
+- 报告：`docs/ops/pilot-report-2026-06.md`（Go）
+- Runbook：路径 B 补 `rest-cursor` 与一键 bootstrap
+
+### Cursor 分页
+
+- Core：`pagination.strategy: cursor`（Query/Body、`stop_when` OR 语义）
+- 模板：`rest-cursor`（第 5 个 example 模板）
+- Mock：`GET /mock/e2e/cursor-items`
+- 测试：`CursorPaginationSupportTest`、`HttpIngestionE2ETest.CursorPull`、`cursor-pagination.spec.ts`
+
 ### OpenAPI 导入（通用化）
 
 - API：`POST /api/openapi/parse`（OAS3 + Swagger 2.0，URL 拉取最大 16MB）
 - UI：OpenAPI 导入弹窗（搜索、多选、批量创建、向导导入）
 - HTTP：Postman 式 Params/Headers/Body；树形 JSON Body / 响应 Schema 可视化
-- 模板：内置厂商模板移除，保留 4 个 example 模板（`rest-pagination` 等）
+- 模板：内置厂商模板移除，保留 5 个 example 模板（`rest-pagination`、`rest-cursor` 等）
 - 测试：`OpenApiImportServiceTest`、`OpenApiImportE2ETest`（纳入 CI）
 - Playwright：`openapi-import.spec.ts`（粘贴解析、搜索、向导、POST Body 树、编辑页 schema 持久化、批量创建）
 - 向导：`openapi_meta` 往返（导入/保存/编辑刷新）、POST 默认展示 Body 树
