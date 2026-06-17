@@ -1,0 +1,15 @@
+{
+  "specPath": "http-ingestion-core/src/test/resources/openapi/sample-users.json",
+  "serviceBaseUrl": "http://localhost:8080",
+  "serverUrlOverride": "http://localhost:8080/mock/e2e",
+  "operations": [
+    {
+      "operationId": "listUsers",
+      "connectorId": "pilot-openapi-mock-listusers",
+      "sinkTable": "users",
+      "sinkKeys": ["id"],
+      "cron": "0 30/15 * * * ?",
+      "triggerFullSync": true
+    }
+  ]
+}

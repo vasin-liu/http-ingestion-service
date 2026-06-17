@@ -11,8 +11,13 @@
 ### OpenAPI 试点（路径 A）
 
 - 脚本：`scripts/pilot/setup-openapi-pilot.ps1`、`pilot-openapi.config.example.json`
+- 本地 dry-run：`pilot-openapi.config.mock-demo.json` + Mock `GET /mock/e2e/v1/users`
 - 报告：`docs/ops/pilot-report-openapi-2026-06.md`
 - 自动应用 OpenAPI 解析的 `suggestedPagination`
+
+### Mock 试点扩展
+
+- `setup-mock-pilot.ps1` 新增 `rest-monotonic-id`、`rest-rolling-window` 连接器
 
 ### Cursor 分页
 

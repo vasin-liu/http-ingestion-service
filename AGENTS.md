@@ -17,7 +17,7 @@ Update `docs/testing/test-matrix.md` when adding scenarios.
 ```powershell
 # CI backend gate
 .\mvnw-jdk21.ps1 -pl http-ingestion-boot -am test `
-  -Dtest=HttpIngestionE2ETest,OpenApiImportE2ETest,JiaduSignVerifierTest,RequestBodyComposerTest,TransformPipelineTest,PostgreSql*,KafkaSinkE2ETest,OpenApiImportServiceTest `
+  -Dtest=HttpIngestionE2ETest,OpenApiImportE2ETest,OpenApiPaginationInferenceTest,JiaduSignVerifierTest,RequestBodyComposerTest,TransformPipelineTest,IncrementalSupportTest,RuntimeConfigParserMonotonicIdTest,RuntimeConfigParserRollingWindowTest,PostgreSql*,KafkaSinkE2ETest,OpenApiImportServiceTest `
   -Dsurefire.failIfNoSpecifiedTests=false
 
 # Playwright (build jar first)

@@ -37,6 +37,8 @@ Copy-Item .\scripts\pilot\pilot-openapi.config.example.json .\scripts\pilot\pilo
 
 报告：`docs/ops/pilot-report-openapi-2026-06.md`。
 
+**本地 dry-run**（无真实 API）：`.\scripts\pilot\setup-openapi-pilot.ps1 -ConfigPath .\scripts\pilot\pilot-openapi.config.mock-demo.json`
+
 **手工步骤**（与脚本等价）：
 
 1. Admin UI → **从 OpenAPI 导入**
@@ -67,6 +69,8 @@ Copy-Item .\scripts\pilot\pilot-openapi.config.example.json .\scripts\pilot\pilo
 | `rest-offset-limit` | `pilot-mock-offset-limit` | `items` | `0 5/15 * * * ?` | 同上 |
 | `rest-cursor` | `pilot-mock-cursor` | `items` | `0 10/15 * * * ?` | `/mock/e2e/cursor-items` |
 | `rest-kafka` | `pilot-mock-kafka` | Kafka topic | `0 15/15 * * * ?` | `/mock/e2e/kafka-users` |
+| `rest-monotonic-id` | `pilot-mock-monotonic-id` | `items` | `0 20/15 * * * ?` | `/mock/e2e/monotonic-items` |
+| `rest-rolling-window` | `pilot-mock-rolling-window` | `items` | `0 25/15 * * * ?` | `/mock/e2e/window-items` |
 | Jiadu Push | `pilot-mock-jiadu` | `jiadu_event_info` | 无 Cron | `POST /mock/jiadu/push/{connectorId}` |
 
 **佳都 Push 演练**：`setup-mock-pilot.ps1` 默认创建 `pilot-mock-jiadu` 并发送 3 轮模拟事件；详见 `docs/api/jiadu-push-integration.md`。

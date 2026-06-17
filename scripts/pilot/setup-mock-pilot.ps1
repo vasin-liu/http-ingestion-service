@@ -81,6 +81,20 @@ $pullConnectors = @(
         TemplateId = "rest-kafka"
         Cron       = "0 15/15 * * * ?"
         MockPath   = "/mock/e2e/kafka-users"
+    },
+    @{
+        Id         = "pilot-mock-monotonic-id"
+        Name       = "Pilot Mock - monotonic_id"
+        TemplateId = "rest-monotonic-id"
+        Cron       = "0 20/15 * * * ?"
+        MockPath   = "/mock/e2e/monotonic-items"
+    },
+    @{
+        Id         = "pilot-mock-rolling-window"
+        Name       = "Pilot Mock - rolling_window"
+        TemplateId = "rest-rolling-window"
+        Cron       = "0 25/15 * * * ?"
+        MockPath   = "/mock/e2e/window-items"
     }
 )
 

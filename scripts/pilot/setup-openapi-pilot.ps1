@@ -24,7 +24,7 @@ function Resolve-RepoPath([string]$RelativePath) {
 
 function Build-ConnectorImportBody(
     $Operation,
-    [hashtable]$Row,
+    $Row,
     [string]$ServerUrlOverride
 ) {
     $config = @{

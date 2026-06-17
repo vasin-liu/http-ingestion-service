@@ -48,6 +48,21 @@ public class MockE2eRestSourceController {
         );
     }
 
+    /** OpenAPI pilot dry-run: matches sample-users.json path `/v1/users` with page query. */
+    @GetMapping("/v1/users")
+    public Map<String, Object> openApiUsers(@RequestParam(defaultValue = "1") int page) {
+        if (page <= 1) {
+            return Map.of(
+                    "data", List.of(
+                            Map.of("id", 1, "name", "Alice"),
+                            Map.of("id", 2, "name", "Bob")
+                    ),
+                    "meta", Map.of("total", 2)
+            );
+        }
+        return Map.of("data", List.of(), "meta", Map.of("total", 2));
+    }
+
     @GetMapping("/cursor-items")
     public Map<String, Object> cursorItems(@RequestParam(required = false) String cursor) {
         if (cursor == null || cursor.isBlank()) {
