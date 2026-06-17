@@ -44,6 +44,11 @@ class OpenApiImportServiceTest {
                 .isEqualTo("integer");
         assertThat(listUsers.httpConfig().path("url").asText()).isEqualTo("https://api.example.com/v1/users");
         assertThat(listUsers.httpConfig().path("method").asText()).isEqualTo("GET");
+        assertThat(listUsers.suggestedPagination()).isNotNull();
+        assertThat(listUsers.suggestedPagination().path("strategy").asText()).isEqualTo("page_page_size");
+        assertThat(listUsers.suggestedPagination().path("page_param").asText()).isEqualTo("page");
+        assertThat(listUsers.suggestedPagination().path("total_count").path("json_path").asText())
+                .isEqualTo("$.meta.total");
 
         OpenApiOperationDto createUser = result.operations().stream()
                 .filter(op -> "createUser".equals(op.operationId()))
@@ -51,6 +56,7 @@ class OpenApiImportServiceTest {
                 .orElseThrow();
         assertThat(createUser.httpConfig().path("body_type").asText()).isEqualTo("json");
         assertThat(createUser.httpConfig().path("body").path("name").asText()).isEqualTo("Alice");
+        assertThat(createUser.suggestedPagination()).isNull();
     }
 
     @Test
@@ -72,6 +78,9 @@ class OpenApiImportServiceTest {
                 .isEqualTo("integer");
         assertThat(listItems.requestSchema().path("query").path("properties").path("page").path("type").asText())
                 .isEqualTo("integer");
+        assertThat(listItems.suggestedPagination()).isNotNull();
+        assertThat(listItems.suggestedPagination().path("strategy").asText()).isEqualTo("page_page_size");
+        assertThat(listItems.suggestedPagination().path("total_count").path("json_path").asText()).isEqualTo("$.total");
 
         OpenApiOperationDto createItem = result.operations().stream()
                 .filter(op -> "createItem".equals(op.operationId()))

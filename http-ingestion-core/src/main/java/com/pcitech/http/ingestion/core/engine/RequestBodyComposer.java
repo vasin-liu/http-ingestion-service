@@ -139,6 +139,10 @@ public final class RequestBodyComposer {
             }
             return;
         }
+        if (incremental.isRollingWindow()) {
+            applyRollingWindowBody(root, incremental, watermark);
+            return;
+        }
         if (!watermark.hasTimestamp() || incremental.requestBodyPath() == null || incremental.requestBodyPath().isBlank()) {
             return;
         }
@@ -153,6 +157,25 @@ public final class RequestBodyComposer {
         range.add(formatTime(effective, incremental.timeFormat()));
         range.add(formatTime(end, incremental.timeFormat()));
         setByPath(root, incremental.requestBodyPath(), range);
+    }
+
+    private static void applyRollingWindowBody(
+            ObjectNode root,
+            RuntimeConnectorConfig.IncrementalSettings incremental,
+            WatermarkState watermark
+    ) {
+        IncrementalSupport.WindowBounds window = IncrementalSupport.resolveWindow(watermark, incremental);
+        String startPath = incremental.requestBodyPath() != null && !incremental.requestBodyPath().isBlank()
+                ? incremental.requestBodyPath()
+                : incremental.requestParam();
+        String endPath = incremental.requestBodyEndPath() != null && !incremental.requestBodyEndPath().isBlank()
+                ? incremental.requestBodyEndPath()
+                : incremental.requestEndParam();
+        if (startPath == null || startPath.isBlank() || endPath == null || endPath.isBlank()) {
+            return;
+        }
+        setByPath(root, startPath, textNode(formatTime(window.start(), incremental.timeFormat())));
+        setByPath(root, endPath, textNode(formatTime(window.end(), incremental.timeFormat())));
     }
 
     private static TextNode textNode(String value) {

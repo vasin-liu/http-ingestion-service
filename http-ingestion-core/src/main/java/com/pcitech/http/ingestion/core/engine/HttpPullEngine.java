@@ -125,7 +125,8 @@ public class HttpPullEngine {
                 break;
             }
 
-            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
+            wmState = IncrementalSupport.advance(
+                    wmState, pageRecords, config.incremental(), jsonPathSupport, incrementalMode);
 
             if (totalPages == null
                     && pagination.totalCountPath() != null
@@ -222,7 +223,8 @@ public class HttpPullEngine {
                 }
             }
 
-            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
+            wmState = IncrementalSupport.advance(
+                    wmState, pageRecords, config.incremental(), jsonPathSupport, incrementalMode);
 
             if (maxRecords != null && allRecords.size() >= maxRecords) {
                 break;
@@ -301,7 +303,8 @@ public class HttpPullEngine {
                 }
             }
 
-            wmState = IncrementalSupport.advance(wmState, pageRecords, config.incremental(), jsonPathSupport);
+            wmState = IncrementalSupport.advance(
+                    wmState, pageRecords, config.incremental(), jsonPathSupport, incrementalMode);
 
             if (maxRecords != null && allRecords.size() >= maxRecords) {
                 break;

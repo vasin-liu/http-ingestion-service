@@ -11,6 +11,7 @@ public record OpenApiOperationDto(
         String suggestedInputRoot,
         JsonNode requestSchema,
         JsonNode responseSchema,
-        JsonNode httpConfig
+        JsonNode httpConfig,
+        JsonNode suggestedPagination
 ) {
 }

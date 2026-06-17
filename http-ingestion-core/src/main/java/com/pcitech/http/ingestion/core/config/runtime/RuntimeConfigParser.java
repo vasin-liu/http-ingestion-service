@@ -147,7 +147,23 @@ public final class RuntimeConfigParser {
                     text(monotonic, "request_body_path", null),
                     null,
                     null,
+                    null,
                     null
+            );
+        }
+        if ("rolling_window".equalsIgnoreCase(mode)) {
+            JsonNode rolling = node.path("rolling_window");
+            return new RuntimeConnectorConfig.IncrementalSettings(
+                    true,
+                    "rolling_window",
+                    text(rolling, "response_path", "$.updated_at"),
+                    text(rolling, "start_param", "startTime"),
+                    text(rolling, "request_target", text(node, "request_target", "query")),
+                    text(rolling, "request_body_start_path", null),
+                    text(rolling, "request_body_end_path", null),
+                    text(rolling, "format", "iso_instant"),
+                    rolling.path("overlap").asText("5m"),
+                    text(rolling, "end_param", "endTime")
             );
         }
         JsonNode ts = node.path("timestamp");
@@ -160,7 +176,8 @@ public final class RuntimeConfigParser {
                 ts.path("request_body_path").asText(null),
                 ts.path("request_body_end_path").asText(null),
                 text(ts, "format", "iso_instant"),
-                ts.path("overlap").asText("5m")
+                ts.path("overlap").asText("5m"),
+                null
         );
     }
 

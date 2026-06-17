@@ -144,6 +144,7 @@ public class OpenApiImportService {
         String inputRoot = inferInputRoot(responseSchemaNode);
         JsonNode responseSchema = toRecordResponseSchema(responseSchemaNode, inputRoot);
         JsonNode httpConfig = buildHttpConfig(root, defaultServer, method, path, operation, requestSchema);
+        JsonNode suggestedPagination = OpenApiPaginationInference.infer(requestSchema, responseSchema, method);
         return new OpenApiOperationDto(
                 operationId,
                 method.toUpperCase(Locale.ROOT),
@@ -153,7 +154,8 @@ public class OpenApiImportService {
                 inputRoot,
                 requestSchema,
                 responseSchema,
-                httpConfig
+                httpConfig,
+                suggestedPagination
         );
     }
 

@@ -61,6 +61,10 @@ class OpenApiImportE2ETest extends AbstractIntegrationE2ETest {
         assertThat(listUsers.suggestedInputRoot()).isEqualTo("$.data");
         assertThat(listUsers.requestSchema().path("query").path("properties").path("page").path("type").asText())
                 .isEqualTo("integer");
+        assertThat(listUsers.suggestedPagination()).isNotNull();
+        assertThat(listUsers.suggestedPagination().path("page_param").asText()).isEqualTo("page");
+        assertThat(listUsers.suggestedPagination().path("total_count").path("json_path").asText())
+                .isEqualTo("$.meta.total");
         assertThat(listUsers.responseSchema().path("record").path("properties").path("id").path("type").asText())
                 .isEqualTo("integer");
     }

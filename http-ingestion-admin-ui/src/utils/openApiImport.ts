@@ -18,6 +18,22 @@ export function connectorIdFromOperation(operation: OpenApiOperation, suffix = '
   return suffix ? `${base}-${suffix}` : base;
 }
 
+export function mergeSuggestedPagination(
+  suggested?: Record<string, unknown> | null,
+): typeof defaultConfig.pagination {
+  if (!suggested || Object.keys(suggested).length === 0) {
+    return defaultConfig.pagination;
+  }
+  return {
+    ...defaultConfig.pagination,
+    ...suggested,
+    total_count: {
+      ...defaultConfig.pagination.total_count,
+      ...(suggested.total_count as Record<string, unknown> | undefined),
+    },
+  };
+}
+
 export function buildConnectorRequestFromOperation(
   operation: OpenApiOperation,
   connectorId: string,
@@ -25,6 +41,7 @@ export function buildConnectorRequestFromOperation(
   const merged = {
     ...defaultConfig,
     http: normalizeHttpConfig(operation.httpConfig),
+    pagination: mergeSuggestedPagination(operation.suggestedPagination),
     transform: {
       ...defaultConfig.transform,
       input_root: operation.suggestedInputRoot || '$',
@@ -60,6 +77,7 @@ export function toWizardImportPayload(operation: OpenApiOperation) {
     requestSchema: operation.requestSchema,
     responseSchema: operation.responseSchema,
     suggestedInputRoot: operation.suggestedInputRoot,
+    suggestedPagination: operation.suggestedPagination ?? null,
   };
 }
 

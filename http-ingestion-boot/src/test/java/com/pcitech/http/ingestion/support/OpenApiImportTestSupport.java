@@ -59,6 +59,9 @@ public final class OpenApiImportTestSupport {
         sink.putArray("keys").add("id");
 
         config.putObject("pagination");
+        if (operation.suggestedPagination() != null && !operation.suggestedPagination().isNull()) {
+            config.set("pagination", operation.suggestedPagination().deepCopy());
+        }
         config.putObject("incremental").put("enabled", false);
         config.putObject("schedule").put("enabled", false);
 

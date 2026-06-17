@@ -21,6 +21,7 @@ public class ConnectorTemplateService {
                 restCursorTemplate(),
                 restLinkHeaderTemplate(),
                 restMonotonicIdTemplate(),
+                restRollingWindowTemplate(),
                 restKafkaTemplate(),
                 webhookJsonArrayTemplate()
         );
@@ -304,6 +305,69 @@ public class ConnectorTemplateService {
                 "rest-monotonic-id",
                 "REST monotonic_id 增量示例",
                 "演示 since_id 自增 ID 增量拉取",
+                "pull",
+                config
+        );
+    }
+
+    private ConnectorTemplateDto restRollingWindowTemplate() {
+        JsonNode config = objectMapper.valueToTree(java.util.Map.of(
+                "http", java.util.Map.of(
+                        "method", "GET",
+                        "url", "https://api.example.com/items",
+                        "headers", java.util.Map.of(),
+                        "query", java.util.Map.of(),
+                        "timeout_ms", 30000
+                ),
+                "pagination", java.util.Map.of(
+                        "strategy", "page_page_size",
+                        "page_param", "page",
+                        "page_size_param", "page_size",
+                        "page_start", 1,
+                        "page_size", 100,
+                        "max_pages", 1,
+                        "total_count", java.util.Map.of("source", "none")
+                ),
+                "incremental", java.util.Map.of(
+                        "enabled", true,
+                        "mode", "rolling_window",
+                        "rolling_window", java.util.Map.of(
+                                "response_path", "$.updated_at",
+                                "start_param", "startTime",
+                                "end_param", "endTime",
+                                "request_target", "query",
+                                "format", "iso_instant",
+                                "overlap", "5m"
+                        )
+                ),
+                "sync", java.util.Map.of("on_first_run", "full"),
+                "transform", java.util.Map.of(
+                        "input_root", "$.data",
+                        "steps", List.of(java.util.Map.of(
+                                "type", "map_fields",
+                                "mappings", List.of(
+                                        mapping("id", "$.id", "long"),
+                                        mapping("name", "$.name", "string")
+                                )
+                        ))
+                ),
+                "sink", java.util.Map.of(
+                        "type", "postgresql",
+                        "target", java.util.Map.of("schema", "public", "table", "items"),
+                        "keys", List.of("id"),
+                        "write_mode", "upsert",
+                        "batch_size", 500
+                ),
+                "schedule", java.util.Map.of(
+                        "enabled", true,
+                        "type", "cron",
+                        "expression", "0 0/5 * * * ?"
+                )
+        ));
+        return example(
+                "rest-rolling-window",
+                "REST rolling_window 增量示例",
+                "演示 startTime/endTime 时间窗口增量拉取",
                 "pull",
                 config
         );

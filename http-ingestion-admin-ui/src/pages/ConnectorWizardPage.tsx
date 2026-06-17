@@ -21,7 +21,7 @@ import FieldMappingEditor from '../components/FieldMappingEditor';
 import HttpRequestConfigPanel from '../components/HttpRequestConfigPanel';
 import ResponseSchemaPanel from '../components/ResponseSchemaPanel';
 import { OPENAPI_IMPORT_STORAGE_KEY } from '../components/OpenApiImportModal';
-import { connectorIdFromOperation, type OpenApiWizardImportPayload } from '../utils/openApiImport';
+import { connectorIdFromOperation, mergeSuggestedPagination, type OpenApiWizardImportPayload } from '../utils/openApiImport';
 import { buildOpenApiMeta, extractOpenApiMeta, parseRequestSchema, type OpenApiMeta } from '../utils/openApiMeta';
 import type { RequestSchema } from '../utils/schemaForm';
 import JsonPathTree from '../components/JsonPathTree';
@@ -83,6 +83,7 @@ export default function ConnectorWizardPage() {
   const isLinkHeaderPagination = paginationStrategy === 'link_header';
   const incrementalMode = Form.useWatch(['incremental', 'mode'], form) ?? 'timestamp';
   const isMonotonicIncremental = incrementalMode === 'monotonic_id';
+  const isRollingWindowIncremental = incrementalMode === 'rolling_window';
   const isKafkaSink = sinkSettings?.type === 'kafka';
   const openapiMetaFromForm = Form.useWatch('openapi_meta', form) as OpenApiMeta | undefined;
   const requestSchemaFromForm = parseRequestSchema(openapiMetaFromForm?.request_schema);
@@ -194,6 +195,7 @@ export default function ConnectorWizardPage() {
       name: payload.operation.summary || `${payload.operation.method} ${payload.operation.path}`,
       mode: 'pull',
       ...merged,
+      pagination: mergeSuggestedPagination(payload.suggestedPagination ?? undefined),
       transform: {
         ...(merged.transform as Record<string, unknown>),
         input_root: inputRoot,
@@ -770,6 +772,7 @@ export default function ConnectorWizardPage() {
                 options={[
                   { value: 'timestamp', label: 'timestamp' },
                   { value: 'monotonic_id', label: 'monotonic_id' },
+                  { value: 'rolling_window', label: 'rolling_window' },
                 ]}
               />
             </Form.Item>
@@ -786,6 +789,33 @@ export default function ConnectorWizardPage() {
                   label={t('connectorWizard.incrementalParam')}
                 >
                   <Input placeholder="since_id" data-testid="monotonic-id-param" />
+                </Form.Item>
+              </>
+            ) : isRollingWindowIncremental ? (
+              <>
+                <Form.Item
+                  name={['incremental', 'rolling_window', 'response_path']}
+                  label={t('connectorWizard.timestampPath')}
+                >
+                  <Input placeholder="$.updated_at" data-testid="rolling-window-path" />
+                </Form.Item>
+                <Form.Item
+                  name={['incremental', 'rolling_window', 'start_param']}
+                  label={t('connectorWizard.rollingWindowStartParam')}
+                >
+                  <Input placeholder="startTime" data-testid="rolling-window-start-param" />
+                </Form.Item>
+                <Form.Item
+                  name={['incremental', 'rolling_window', 'end_param']}
+                  label={t('connectorWizard.rollingWindowEndParam')}
+                >
+                  <Input placeholder="endTime" data-testid="rolling-window-end-param" />
+                </Form.Item>
+                <Form.Item
+                  name={['incremental', 'rolling_window', 'overlap']}
+                  label={t('connectorWizard.rollingWindowOverlap')}
+                >
+                  <Input placeholder="5m" data-testid="rolling-window-overlap" />
                 </Form.Item>
               </>
             ) : (

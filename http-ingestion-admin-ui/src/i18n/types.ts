@@ -168,6 +168,9 @@ export type LocaleMessages = {
     incrementalMode: string;
     timestampPath: string;
     monotonicIdPath: string;
+    rollingWindowStartParam: string;
+    rollingWindowEndParam: string;
+    rollingWindowOverlap: string;
     incrementalParam: string;
     mappingTarget1: string;
     mappingSource1: string;

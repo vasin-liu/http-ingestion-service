@@ -75,14 +75,19 @@ public record RuntimeConnectorConfig(
             String requestBodyPath,
             String requestBodyEndPath,
             String timeFormat,
-            String overlap
+            String overlap,
+            String requestEndParam
     ) {
         public static IncrementalSettings disabled() {
-            return new IncrementalSettings(false, "timestamp", null, null, "query", null, null, "iso_instant", "5m");
+            return new IncrementalSettings(false, "timestamp", null, null, "query", null, null, "iso_instant", "5m", null);
         }
 
         public boolean isMonotonicId() {
             return "monotonic_id".equalsIgnoreCase(mode);
+        }
+
+        public boolean isRollingWindow() {
+            return "rolling_window".equalsIgnoreCase(mode);
         }
     }
 

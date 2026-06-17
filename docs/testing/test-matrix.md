@@ -20,6 +20,7 @@
 | `LinkHeaderSupportTest` | Link `rel=next` 解析与 `stop_when` |
 | `IncrementalSupportTest` | monotonic_id 查询参数、水位推进 |
 | `RuntimeConfigParserMonotonicIdTest` | `incremental.mode: monotonic_id` 解析 |
+| `RuntimeConfigParserRollingWindowTest` | `incremental.mode: rolling_window` 解析 |
 | `JsonPathSupportCursorTest` | cursor/hasMore JsonPath 读取 |
 | `JiaduSignVerifierTest` | 佳都 sign MD5 |
 | `KafkaRecordSinkTestcontainersTest` | Kafka JSON publish + message key |
@@ -46,7 +47,7 @@
 | `HttpIngestionE2ETest.LinkHeaderPull` | WireMock Link header 2 页 3 行 |
 | `HttpIngestionE2ETest.MonotonicIdPull` | WireMock since_id 全量+增量 3 行 |
 | `KafkaSinkE2ETest` | WireMock Pull → Kafka topic（**CI 门禁**） |
-| `OpenApiImportE2ETest` | `POST /api/openapi/parse`（OAS3 内联、Swagger2 URL）、批量创建 + `openapi_meta` |
+| `OpenApiImportE2ETest` | `POST /api/openapi/parse`（OAS3 内联、Swagger2 URL）、批量创建 + `openapi_meta`、推断 `suggestedPagination` |
 
 ### Pull 多轮（R1–R4）
 
@@ -68,11 +69,12 @@
 | `connector-schedule.spec.ts` | 调度暂停/恢复 |
 | `jiadu-push.spec.ts` | 佳都 Push 模板 + simulator |
 | `kafka-sink.spec.ts` | **rest-kafka** 向导 → 全量 sync → Kafka 消息数 |
-| `openapi-import.spec.ts` | OpenAPI 导入全链路（粘贴解析、搜索、GET Params、POST Body 树、编辑页 schema 刷新、响应 Schema、批量创建） |
+| `openapi-import.spec.ts` | OpenAPI 导入全链路（粘贴解析、搜索、GET Params、POST Body 树、编辑页 schema 刷新、响应 Schema、推断分页、批量创建） |
 | `json-tree.spec.ts` | JSON 树形 Body 编辑器（嵌套 object/array、展开/收起行数稳定、object 内添加字段） |
 | `cursor-pagination.spec.ts` | **rest-cursor** 模板 → Mock 全量 sync |
 | `link-header-pagination.spec.ts` | **rest-link-header** 模板 → Mock 全量 sync |
 | `monotonic-id-incremental.spec.ts` | **rest-monotonic-id** 模板 → Mock 全量+增量 sync |
+| `rolling-window-incremental.spec.ts` | **rest-rolling-window** 模板 → Mock 全量+增量 sync |
 
 Playwright `global-setup.ts` 启动 **PostgreSQL + Kafka**（Podman/Docker），并注入 `EXTERNAL_KAFKA_BOOTSTRAP_SERVERS`。
 

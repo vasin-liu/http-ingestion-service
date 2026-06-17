@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,6 +17,12 @@ import java.util.stream.Collectors;
 @Profile("e2e")
 @RequestMapping("/mock/e2e")
 public class MockE2eRestSourceController {
+
+    private static final List<Map<String, Object>> WINDOW_ITEMS = List.of(
+            Map.of("id", 1, "name", "Alice", "updated_at", "2025-06-01T08:00:00Z"),
+            Map.of("id", 2, "name", "Bob", "updated_at", "2025-06-01T10:00:00Z"),
+            Map.of("id", 3, "name", "Carol", "updated_at", "2025-06-01T12:00:00Z")
+    );
 
     private static final List<Map<String, Object>> MONOTONIC_ITEMS = List.of(
             Map.of("id", 1, "name", "Alice"),
@@ -95,6 +102,27 @@ public class MockE2eRestSourceController {
                     .filter(item -> ((Number) item.get("id")).longValue() > since)
                     .collect(Collectors.toList());
         }
+        return Map.of("data", filtered);
+    }
+
+    @GetMapping("/window-items")
+    public Map<String, Object> windowItems(
+            @RequestParam(name = "startTime", required = false) String startTime,
+            @RequestParam(name = "endTime", required = false) String endTime
+    ) {
+        if (startTime == null || startTime.isBlank() || endTime == null || endTime.isBlank()) {
+            return Map.of(
+                    "data", List.of(WINDOW_ITEMS.get(0), WINDOW_ITEMS.get(1))
+            );
+        }
+        Instant start = Instant.parse(startTime);
+        Instant end = Instant.parse(endTime);
+        List<Map<String, Object>> filtered = WINDOW_ITEMS.stream()
+                .filter(item -> {
+                    Instant updatedAt = Instant.parse((String) item.get("updated_at"));
+                    return !updatedAt.isBefore(start) && updatedAt.isBefore(end);
+                })
+                .collect(Collectors.toList());
         return Map.of("data", filtered);
     }
 }

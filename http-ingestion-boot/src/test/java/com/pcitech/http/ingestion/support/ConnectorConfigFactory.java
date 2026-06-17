@@ -432,6 +432,50 @@ public final class ConnectorConfigFactory {
         return config;
     }
 
+    public static JsonNode rollingWindowItemsConfig(ObjectMapper objectMapper, String baseUrl) {
+        ObjectNode config = objectMapper.createObjectNode();
+        ObjectNode http = config.putObject("http");
+        http.put("method", "GET");
+        http.put("url", baseUrl + "/items");
+        http.put("timeout_ms", 30000);
+        http.putObject("headers");
+        http.putObject("query");
+
+        ObjectNode pagination = config.putObject("pagination");
+        pagination.put("strategy", "page_page_size");
+        pagination.put("page_param", "page");
+        pagination.put("page_size_param", "page_size");
+        pagination.put("page_start", 1);
+        pagination.put("page_size", 100);
+        pagination.put("max_pages", 1);
+        pagination.putObject("total_count").put("source", "none");
+
+        ObjectNode incremental = config.putObject("incremental");
+        incremental.put("enabled", true);
+        incremental.put("mode", "rolling_window");
+        ObjectNode rolling = incremental.putObject("rolling_window");
+        rolling.put("response_path", "$.updated_at");
+        rolling.put("start_param", "startTime");
+        rolling.put("end_param", "endTime");
+        rolling.put("request_target", "query");
+        rolling.put("format", "iso_instant");
+        rolling.put("overlap", "5m");
+
+        config.putObject("sync").put("on_first_run", "full");
+
+        ObjectNode transform = config.putObject("transform");
+        transform.put("input_root", "$.data");
+        ArrayNode steps = transform.putArray("steps");
+        ObjectNode step = steps.addObject();
+        step.put("type", "map_fields");
+        ArrayNode mappings = step.putArray("mappings");
+        mappings.addObject().put("target", "id").put("source", "$.id").put("type", "long");
+        mappings.addObject().put("target", "name").put("source", "$.name").put("type", "string");
+
+        appendSink(config, "users", "id");
+        return config;
+    }
+
     public static JsonNode kafkaWireMockUsersConfig(ObjectMapper objectMapper, String wireMockBaseUrl, String topic) {
         ObjectNode config = objectMapper.createObjectNode();
 

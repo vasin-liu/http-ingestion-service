@@ -60,6 +60,21 @@ test.describe('OpenAPI import', () => {
     await expect(operationRows(page).filter({ hasText: 'listUsers' })).toHaveCount(1);
   });
 
+  test('imports list operation with inferred pagination on wizard step', async ({ page }) => {
+    await parseSampleOpenApi(page);
+    await selectOperation(page, 'listUsers');
+    await openApiDialog(page).getByTestId('openapi-import-wizard-btn').click();
+
+    await expect(page).toHaveURL(/\/connectors\/new\?from=openapi/);
+    await page.getByTestId('wizard-next').click();
+    await page.getByTestId('wizard-next').click();
+    await page.getByTestId('wizard-next').click();
+
+    await expect(page.locator('.ant-select:has(#pagination_strategy)')).toContainText('page / page_size');
+    await expect(page.getByLabel('page 参数名')).toHaveValue('page');
+    await expect(page.getByLabel('total JsonPath（可选）')).toHaveValue('$.meta.total');
+  });
+
   test('imports single operation into wizard with HTTP config and params', async ({ page }) => {
     await parseSampleOpenApi(page);
     await selectOperation(page, 'listUsers');

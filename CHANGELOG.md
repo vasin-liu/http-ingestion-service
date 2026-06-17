@@ -29,6 +29,20 @@
 - Mock：`GET /mock/e2e/monotonic-items`
 - 测试：`IncrementalSupportTest`、`RuntimeConfigParserMonotonicIdTest`、`HttpIngestionE2ETest.MonotonicIdPull`、`monotonic-id-incremental.spec.ts`
 
+### OpenAPI 分页推断
+
+- Core：`OpenApiPaginationInference` 从 query/body 参数与响应 envelope 推断 `page_page_size` / `offset_limit` / `cursor` 及 `total_count.json_path`
+- DTO：`OpenApiOperationDto.suggestedPagination`
+- Admin UI：导入向导与批量创建合并推断分页配置
+- 测试：`OpenApiPaginationInferenceTest`、扩展 `OpenApiImportServiceTest` / `OpenApiImportE2ETest`、`openapi-import.spec.ts`
+
+### rolling_window 增量
+
+- Core：`incremental.mode: rolling_window`（`startTime`/`endTime` 查询参数、窗口水位推进）
+- 模板：`rest-rolling-window`（第 8 个 example 模板）
+- Mock：`GET /mock/e2e/window-items`
+- 测试：`IncrementalSupportTest`、`RuntimeConfigParserRollingWindowTest`、`HttpIngestionE2ETest.RollingWindowPull`、`rolling-window-incremental.spec.ts`
+
 ### OpenAPI 导入（通用化）
 
 - API：`POST /api/openapi/parse`（OAS3 + Swagger 2.0，URL 拉取最大 16MB）

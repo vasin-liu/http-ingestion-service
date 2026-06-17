@@ -39,6 +39,7 @@ import java.util.Map;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -89,7 +90,7 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
 
             var templates = restTemplate.getForEntity("/api/templates", List.class);
             assertThat(templates.getBody()).isNotNull();
-            assertThat(templates.getBody().size()).isEqualTo(7);
+            assertThat(templates.getBody().size()).isEqualTo(8);
 
             JobRun fullJob = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
@@ -1121,6 +1122,69 @@ class HttpIngestionE2ETest extends AbstractIntegrationE2ETest {
             JobRun incrementalJob = E2EJobAwait.awaitCompletion(
                     jobRunRepository,
                     syncService.triggerAsync("e2e-monotonic-id", SyncService.SyncOptions.incremental()));
+            assertThat(incrementalJob.status()).as("job error: %s", incrementalJob.errorMessage())
+                    .isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(incrementalJob.recordsOk()).isEqualTo(1);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(3);
+            }
+        }
+    }
+
+    @Nested
+    class RollingWindowPull {
+
+        @BeforeEach
+        void stubWindowItems() {
+            WIREMOCK.resetAll();
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .withQueryParam("startTime", matching(".+"))
+                    .withQueryParam("endTime", matching(".+"))
+                    .atPriority(1)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[{"id":3,"name":"C","updated_at":"2025-06-01T12:00:00Z"}]}
+                                    """)));
+            WIREMOCK.stubFor(get(urlPathEqualTo("/items"))
+                    .atPriority(2)
+                    .willReturn(aResponse()
+                            .withHeader("Content-Type", "application/json")
+                            .withBody("""
+                                    {"data":[
+                                      {"id":1,"name":"A","updated_at":"2025-06-01T08:00:00Z"},
+                                      {"id":2,"name":"B","updated_at":"2025-06-01T10:00:00Z"}
+                                    ]}
+                                    """)));
+        }
+
+        @Test
+        void wireMockRollingWindow_fullThenIncremental() throws Exception {
+            JsonNode config = ConnectorConfigFactory.rollingWindowItemsConfig(
+                    objectMapper,
+                    "http://localhost:" + WIREMOCK.getPort()
+            );
+            connectorService.create(new ConnectorRequestDto("e2e-rolling-window", "Rolling Window Items", "pull", config));
+            connectorService.publish("e2e-rolling-window");
+
+            JobRun fullJob = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-rolling-window", SyncService.SyncOptions.full()));
+            assertThat(fullJob.status()).as("job error: %s", fullJob.errorMessage()).isEqualTo(JobRun.STATUS_SUCCESS);
+            assertThat(fullJob.recordsOk()).isEqualTo(2);
+
+            try (var connection = pgConnection()) {
+                assertThat(PgTestSupport.countRows(connection, "users")).isEqualTo(2);
+            }
+
+            var state = syncService.getState("e2e-rolling-window");
+            assertThat(state).isPresent();
+            assertThat(state.get().watermarkJson()).contains("timestamp");
+
+            JobRun incrementalJob = E2EJobAwait.awaitCompletion(
+                    jobRunRepository,
+                    syncService.triggerAsync("e2e-rolling-window", SyncService.SyncOptions.incremental()));
             assertThat(incrementalJob.status()).as("job error: %s", incrementalJob.errorMessage())
                     .isEqualTo(JobRun.STATUS_SUCCESS);
             assertThat(incrementalJob.recordsOk()).isEqualTo(1);

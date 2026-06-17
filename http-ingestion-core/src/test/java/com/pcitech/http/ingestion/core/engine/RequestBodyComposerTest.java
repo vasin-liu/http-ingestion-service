@@ -22,7 +22,7 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "timestamp", "$.capTime", null, "body", "condition.startTime", "condition.endTime", "dahua_utc", "5m"
+                true, "timestamp", "$.capTime", null, "body", "condition.startTime", "condition.endTime", "dahua_utc", "5m", null
         );
         String template = """
                 {"page":1,"pageSize":100,"condition":{}}
@@ -75,7 +75,7 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "timestamp", "$.capTime", null, "body", "startTimeStrUtc", "endTimeStrUtc", "dahua_utc", "5m"
+                true, "timestamp", "$.capTime", null, "body", "startTimeStrUtc", "endTimeStrUtc", "dahua_utc", "5m", null
         );
         String template = "{}";
         WatermarkState watermarkState = new WatermarkState(Instant.parse("2025-06-01T08:30:00Z"), null);
@@ -97,7 +97,7 @@ class RequestBodyComposerTest {
                 null, null, null, true, List.of("empty_cursor", "empty_page"), "Link", "next"
         );
         RuntimeConnectorConfig.IncrementalSettings incremental = new RuntimeConnectorConfig.IncrementalSettings(
-                true, "timestamp", "$.evcc", null, "body", "params.evcc", null, "meiya_datetime", "5m"
+                true, "timestamp", "$.evcc", null, "body", "params.evcc", null, "meiya_datetime", "5m", null
         );
         String template = """
                 {"params":{},"page":{"skip":0,"limit":100}}

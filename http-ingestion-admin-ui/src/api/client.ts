@@ -93,6 +93,7 @@ export interface OpenApiOperation {
   requestSchema: Record<string, unknown>;
   responseSchema: Record<string, unknown>;
   httpConfig: Record<string, unknown>;
+  suggestedPagination?: Record<string, unknown> | null;
 }
 
 export interface OpenApiParseResult {
