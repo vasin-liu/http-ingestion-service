@@ -26,13 +26,26 @@
 
 适用于对接客户或内部 HTTP 源。
 
+**一键 bootstrap**（OpenAPI 批量导入 + 发布 + 首日全量）：
+
+```powershell
+Copy-Item .\scripts\pilot\pilot-openapi.config.example.json .\scripts\pilot\pilot-openapi.config.json
+# 编辑 pilot-openapi.config.json：specPath/specUrl、operations、sink 表与 Cron
+.\scripts\pilot\setup-openapi-pilot.ps1
+.\scripts\pilot\collect-daily-metrics.ps1   # 每日执行
+```
+
+报告：`docs/ops/pilot-report-openapi-2026-06.md`。
+
+**手工步骤**（与脚本等价）：
+
 1. Admin UI → **从 OpenAPI 导入**
 2. 粘贴 OpenAPI JSON/YAML，或填写文档 URL（如 `http://host/v2/api-docs`）→ **解析文档**
 3. 勾选目标接口 → **进入向导配置**（单接口）或 **批量创建草稿**（多接口）
 4. 在向导中完成：HTTP URL、分页/增量、Transform 映射、Sink 表与主键
 5. **发布** 并配置 Cron（建议错开分钟，见下表）
 
-导入后连接器 ID 通常为 `openapi-{operationId}` 派生；配置含 `openapi_meta` 请求/响应 Schema。
+导入后连接器 ID 通常为 `openapi-{operationId}` 派生；配置含 `openapi_meta` 请求/响应 Schema。`setup-openapi-pilot.ps1` 会应用解析结果中的 `suggestedPagination`（若存在）。
 
 ### 路径 B — Mock 观测演练
 

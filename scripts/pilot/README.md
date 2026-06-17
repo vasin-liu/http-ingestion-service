@@ -1,8 +1,36 @@
-# 7 天 Mock 试点脚本
+# 7 天试点脚本
 
-路径 B（示例模板 + 内置 Mock），对应 `docs/ops/pilot-runbook.md`。
+- **路径 B（Mock）**：`setup-mock-pilot.ps1` — 示例模板 + 内置 Mock  
+- **路径 A（OpenAPI）**：`setup-openapi-pilot.ps1` — 真实 API / OpenAPI 批量导入  
 
-## 1. 部署
+对应 `docs/ops/pilot-runbook.md`。
+
+## 路径 A — OpenAPI 真实 API 试点
+
+### 1. 部署
+
+```powershell
+.\mvnw-jdk21.ps1 -pl http-ingestion-boot -am package -DskipTests
+.\scripts\podman\deploy.ps1 -SkipBuild
+```
+
+### 2. 配置并导入
+
+```powershell
+Copy-Item .\scripts\pilot\pilot-openapi.config.example.json .\scripts\pilot\pilot-openapi.config.json
+# 编辑：specPath 或 specUrl、operations（operationId、connectorId、sinkTable、cron）
+.\scripts\pilot\setup-openapi-pilot.ps1
+```
+
+`serverUrlOverride` 可选：将解析出的 HTTP URL 主机替换为试点环境地址（保留 path）。
+
+### 3. 每日观测
+
+同路径 B，使用 `collect-daily-metrics.ps1`；报告填写 `docs/ops/pilot-report-openapi-2026-06.md`。
+
+---
+
+## 路径 B — Mock 观测演练
 
 ```powershell
 # 仓库根目录

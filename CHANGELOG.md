@@ -8,6 +8,12 @@
 - 报告：`docs/ops/pilot-report-2026-06.md`（Go）
 - Runbook：路径 B 补 `rest-cursor` 与一键 bootstrap
 
+### OpenAPI 试点（路径 A）
+
+- 脚本：`scripts/pilot/setup-openapi-pilot.ps1`、`pilot-openapi.config.example.json`
+- 报告：`docs/ops/pilot-report-openapi-2026-06.md`
+- 自动应用 OpenAPI 解析的 `suggestedPagination`
+
 ### Cursor 分页
 
 - Core：`pagination.strategy: cursor`（Query/Body、`stop_when` OR 语义）

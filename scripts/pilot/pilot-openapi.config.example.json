@@ -1,0 +1,16 @@
+{
+  "specPath": "http-ingestion-core/src/test/resources/openapi/sample-users.json",
+  "specUrl": null,
+  "serviceBaseUrl": "http://localhost:8080",
+  "serverUrlOverride": null,
+  "operations": [
+    {
+      "operationId": "listUsers",
+      "connectorId": "pilot-openapi-listusers",
+      "sinkTable": "users",
+      "sinkKeys": ["id"],
+      "cron": "0 0/15 * * * ?",
+      "triggerFullSync": true
+    }
+  ]
+}
